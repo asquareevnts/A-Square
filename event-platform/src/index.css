@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+
+  /* FINAL GLOBAL BACKGROUND */
+  background-color: #0f0c29;
+
+  /* Prevent horizontal scroll glitches */
+  overflow-x: hidden;
+}
+
+
+@keyframes grain {
+  0%, 100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-1%, 1%);
+  }
+  40% {
+    transform: translate(1%, -1%);
+  }
+  60% {
+    transform: translate(-1%, -1%);
+  }
+  80% {
+    transform: translate(1%, 1%);
+  }
+}
+
+.animate-grain {
+  animation: grain 6s steps(10) infinite;
+}
