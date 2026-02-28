@@ -14,8 +14,9 @@ services:
       - key: FRONTEND_URL
         value: https://event-frontend.onrender.com
 
-  - type: static
+  - type: web
     name: event-frontend
+    env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: dist
