@@ -5,7 +5,17 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   server: {
-    allowedHosts: ['.trycloudflare.com']
+    allowedHosts: ['.trycloudflare.com'],
+    proxy: {
+      '/auth': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      },
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
   },
   plugins: [
     tailwindcss(),

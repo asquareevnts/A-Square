@@ -1,4 +1,5 @@
 import productImage from "../assets/Logo.png";
+import { buildApiUrl } from "../config/api";
 
 const STORAGE_KEY = "event-platform-products";
 
@@ -20,7 +21,7 @@ function normalizeProducts(products) {
   }));
 }
 
-export function loadProducts() {
+function readLocalProducts() {
   if (typeof window === "undefined") {
     return defaultProducts;
   }
@@ -39,11 +40,56 @@ export function loadProducts() {
   }
 }
 
-export function saveProducts(products) {
+function writeLocalProducts(products) {
   if (typeof window === "undefined") {
     return;
   }
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
   window.dispatchEvent(new CustomEvent("products-updated"));
+}
+
+async function syncProductsFromServer() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const response = await fetch(buildApiUrl("/api/content/products"), {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data?.items) && data.items.length
+      ? normalizeProducts(data.items)
+      : readLocalProducts();
+
+    writeLocalProducts(items);
+  } catch {
+    // Keep local fallback silently
+  }
+}
+
+export function loadProducts() {
+  const localProducts = readLocalProducts();
+  void syncProductsFromServer();
+  return localProducts;
+}
+
+export function saveProducts(products) {
+  const normalized = normalizeProducts(products || []);
+  writeLocalProducts(normalized);
+
+  void fetch(buildApiUrl("/api/content/products"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ items: normalized })
+  }).catch(() => {
+    // Keep local fallback silently
+  });
 }

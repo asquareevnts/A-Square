@@ -154,15 +154,32 @@ router.post('/login', async (req, res) => {
 });
 
 // Google OAuth
-router.get('/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
+router.get('/google', (req, res, next) => {
+  const origin = req.get('origin');
+  const referer = req.get('referer');
+
+  if (origin) {
+    req.session.frontendUrl = origin;
+  } else if (referer) {
+    try {
+      req.session.frontendUrl = new URL(referer).origin;
+    } catch {
+      req.session.frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    }
+  }
+
+  next();
+}, passport.authenticate('google', { scope: ['profile', 'email'] }));
 
 router.get('/google/callback',
   passport.authenticate('google', { failureRedirect: '/signin' }),
   (req, res) => {
-    // Successful authentication, redirect to home or dashboard
-    res.redirect('http://localhost:5173/');
+    const frontendUrl = req.session?.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+    if (req.session) {
+      delete req.session.frontendUrl;
+    }
+
+    res.redirect(`${frontendUrl}/`);
   }
 );
 

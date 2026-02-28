@@ -5,6 +5,7 @@ import { FcGoogle } from "react-icons/fc";
 import { FiMail, FiLock, FiUser, FiPhone, FiEye, FiEyeOff } from "react-icons/fi";
 import { clearAdminSession } from "../utils/adminAuth";
 import { registerLocalAccount } from "../data/localAuthStore";
+import { buildApiUrl } from "../config/api";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -69,7 +70,7 @@ export default function SignUp() {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/auth/register", {
+      const response = await fetch(buildApiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -111,7 +112,7 @@ export default function SignUp() {
   };
 
   const handleGoogleSignUp = () => {
-    window.location.href = "http://localhost:5000/auth/google";
+    window.location.href = buildApiUrl("/auth/google");
   };
 
   const getStrengthColor = () => {

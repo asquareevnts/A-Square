@@ -1,3 +1,5 @@
+import { buildApiUrl } from "../config/api";
+
 const STORAGE_KEY = "event-platform-contact";
 
 export const defaultContactInfo = {
@@ -9,7 +11,7 @@ export const defaultContactInfo = {
   address: "Hitech City, Hyderabad, Telangana 500081"
 };
 
-export function loadContactInfo() {
+function readLocalContactInfo() {
   if (typeof window === "undefined") {
     return defaultContactInfo;
   }
@@ -30,11 +32,60 @@ export function loadContactInfo() {
   }
 }
 
-export function saveContactInfo(info) {
+function writeLocalContactInfo(info) {
   if (typeof window === "undefined") {
     return;
   }
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(info));
   window.dispatchEvent(new CustomEvent("contact-updated"));
+}
+
+async function syncContactFromServer() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const response = await fetch(buildApiUrl("/api/content/contact"), {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+    const info = {
+      ...defaultContactInfo,
+      ...(data?.info || readLocalContactInfo())
+    };
+    writeLocalContactInfo(info);
+  } catch {
+    // Keep local fallback silently
+  }
+}
+
+export function loadContactInfo() {
+  const localInfo = readLocalContactInfo();
+  void syncContactFromServer();
+  return localInfo;
+}
+
+export function saveContactInfo(info) {
+  const mergedInfo = {
+    ...defaultContactInfo,
+    ...(info || {})
+  };
+
+  writeLocalContactInfo(mergedInfo);
+
+  void fetch(buildApiUrl("/api/content/contact"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ info: mergedInfo })
+  }).catch(() => {
+    // Keep local fallback silently
+  });
 }

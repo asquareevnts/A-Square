@@ -52,7 +52,43 @@ export function initDatabase() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS content_store (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   console.log('✅ Database initialized successfully');
+}
+
+export function getContentByKey(key) {
+  const stmt = db.prepare('SELECT value FROM content_store WHERE key = ?');
+  const row = stmt.get(key);
+
+  if (!row) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(row.value);
+  } catch {
+    return null;
+  }
+}
+
+export function setContentByKey(key, value) {
+  const stmt = db.prepare(`
+    INSERT INTO content_store (key, value, updated_at)
+    VALUES (?, ?, CURRENT_TIMESTAMP)
+    ON CONFLICT(key)
+    DO UPDATE SET
+      value = excluded.value,
+      updated_at = CURRENT_TIMESTAMP
+  `);
+
+  stmt.run(key, JSON.stringify(value));
 }
 
 // Create a new user (local registration)

@@ -11,6 +11,7 @@ import {
   setAdminAuthenticated
 } from "../utils/adminAuth";
 import { loginLocalAccount } from "../data/localAuthStore";
+import { buildApiUrl } from "../config/api";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -54,7 +55,7 @@ export default function SignIn() {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/auth/login", {
+      const response = await fetch(buildApiUrl("/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -85,7 +86,7 @@ export default function SignIn() {
   };
 
   const handleGoogleSignIn = () => {
-    window.location.href = "http://localhost:5000/auth/google";
+    window.location.href = buildApiUrl("/auth/google");
   };
 
   const handleForgotPasswordSubmit = async (e) => {
@@ -198,13 +199,13 @@ export default function SignIn() {
 
           <div className="my-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-slate-300"></div>
-            <span className="text-sm text-slate-500">or sign in with email/username</span>
+            <span className="text-sm text-slate-500">or sign in with email</span>
             <div className="h-px flex-1 bg-slate-300"></div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="mb-2 block text-sm font-medium text-slate-700">Email or Username</label>
+              <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
               <div className="relative">
                 <FiMail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input

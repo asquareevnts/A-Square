@@ -1,4 +1,5 @@
 import placeholderEventImage from "../assets/Logo.png";
+import { buildApiUrl } from "../config/api";
 
 const STORAGE_KEY = "event-platform-events";
 
@@ -40,7 +41,7 @@ function normalizeEvents(events) {
   }));
 }
 
-export function loadEvents() {
+function readLocalEvents() {
   if (typeof window === "undefined") {
     return defaultEvents;
   }
@@ -58,11 +59,56 @@ export function loadEvents() {
   }
 }
 
-export function saveEvents(events) {
+function writeLocalEvents(events) {
   if (typeof window === "undefined") {
     return;
   }
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(events));
   window.dispatchEvent(new CustomEvent("events-updated"));
+}
+
+async function syncEventsFromServer() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const response = await fetch(buildApiUrl("/api/content/events"), {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data?.items) && data.items.length
+      ? normalizeEvents(data.items)
+      : readLocalEvents();
+
+    writeLocalEvents(items);
+  } catch {
+    // Keep local fallback silently
+  }
+}
+
+export function loadEvents() {
+  const localEvents = readLocalEvents();
+  void syncEventsFromServer();
+  return localEvents;
+}
+
+export function saveEvents(events) {
+  const normalized = normalizeEvents(events || []);
+  writeLocalEvents(normalized);
+
+  void fetch(buildApiUrl("/api/content/events"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ items: normalized })
+  }).catch(() => {
+    // Keep local fallback silently
+  });
 }

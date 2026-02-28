@@ -1,4 +1,5 @@
 import placeholderImage from "../assets/Logo.png";
+import { buildApiUrl } from "../config/api";
 
 const STORAGE_KEY = "event-platform-gallery";
 
@@ -17,7 +18,7 @@ function normalizeGallery(items) {
   }));
 }
 
-export function loadGalleryItems() {
+function readLocalGalleryItems() {
   if (typeof window === "undefined") {
     return defaultGalleryItems;
   }
@@ -35,11 +36,56 @@ export function loadGalleryItems() {
   }
 }
 
-export function saveGalleryItems(items) {
+function writeLocalGalleryItems(items) {
   if (typeof window === "undefined") {
     return;
   }
 
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   window.dispatchEvent(new CustomEvent("gallery-updated"));
+}
+
+async function syncGalleryFromServer() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const response = await fetch(buildApiUrl("/api/content/gallery"), {
+      credentials: "include"
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    const data = await response.json();
+    const items = Array.isArray(data?.items) && data.items.length
+      ? normalizeGallery(data.items)
+      : readLocalGalleryItems();
+
+    writeLocalGalleryItems(items);
+  } catch {
+    // Keep local fallback silently
+  }
+}
+
+export function loadGalleryItems() {
+  const localItems = readLocalGalleryItems();
+  void syncGalleryFromServer();
+  return localItems;
+}
+
+export function saveGalleryItems(items) {
+  const normalized = normalizeGallery(items || []);
+  writeLocalGalleryItems(normalized);
+
+  void fetch(buildApiUrl("/api/content/gallery"), {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ items: normalized })
+  }).catch(() => {
+    // Keep local fallback silently
+  });
 }
