@@ -38,9 +38,9 @@ export default function SignIn() {
   }
 
   return (
-    <section className="min-h-screen bg-white px-6 pb-20 pt-8">
-      <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-3xl font-bold text-slate-900">Sign In</h1>
+    <section className="min-h-screen bg-white px-4 pb-20 pt-8 sm:px-6">
+      <div className="mx-auto max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+        <h1 className="text-2xl font-bold text-slate-900 sm:text-3xl">Sign In</h1>
         <p className="mt-2 text-sm text-slate-600">Only admin can access dashboard management.</p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">

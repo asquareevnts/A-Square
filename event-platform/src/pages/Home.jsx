@@ -3,21 +3,21 @@ import { motion } from "framer-motion";
 export default function Home() {
   return (
     <div className="min-h-screen bg-white text-slate-900">
-      <section className="px-6 pb-16 pt-12 md:pt-16">
+      <section className="px-4 pb-14 pt-8 sm:px-6 sm:pt-10 md:pt-16">
         <div className="mx-auto grid w-full max-w-7xl gap-10 md:grid-cols-2 md:items-center">
           <motion.div
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.55, ease: "easeOut" }}
           >
-            <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-1 text-sm font-medium text-slate-700">
+            <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700 sm:px-4 sm:text-sm">
               Premium event experiences
             </p>
-            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight md:text-6xl">
+            <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl md:mt-5 md:text-6xl">
               Discover events in a
               <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent"> modern, modular way</span>
             </h1>
-            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600 sm:mt-6 sm:text-lg">
               Explore curated experiences, manage bookings smoothly, and host with confidence through an elegant white-first interface.
             </p>
             <div className="mt-8 flex flex-col gap-4 sm:flex-row">
@@ -58,7 +58,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="px-6 pb-20">
+      <section className="px-4 pb-20 sm:px-6">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-6 md:grid-cols-3">
             {[
@@ -89,8 +89,8 @@ export default function Home() {
             ))}
           </div>
 
-          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-8">
-            <h2 className="text-2xl font-semibold text-slate-900">Built for premium event journeys</h2>
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-8">
+            <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Built for premium event journeys</h2>
             <p className="mt-3 max-w-2xl text-slate-600">
               Minimal visuals, strong typography, and modular content blocks create a polished experience that scales with your brand.
             </p>

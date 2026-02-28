@@ -19,9 +19,9 @@ export default function Products() {
   }, []);
 
   return (
-    <section className="min-h-screen bg-white px-6 pb-20 pt-8">
+    <section className="min-h-screen bg-white px-4 pb-20 pt-8 sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <h1 className="text-4xl font-bold tracking-tight text-slate-900">Products</h1>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">Products</h1>
         <p className="mt-3 text-slate-600">Explore our featured products for premium events.</p>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -34,10 +34,11 @@ export default function Products() {
                 <img
                   src={product.image}
                   alt={product.name}
-                  className="h-56 w-full object-cover"
+                  className="h-48 w-full object-cover sm:h-56"
                 />
               </div>
               <p className="mt-4 text-center text-lg font-semibold text-slate-900">{product.name}</p>
+              <p className="mt-1 text-center text-base font-medium text-slate-600">₹ {product.price}</p>
               <button className="mt-4 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800">
                 Book Now
               </button>
