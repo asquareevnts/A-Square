@@ -3,7 +3,7 @@ import { NavLink } from "react-router-dom";
 import { FiMenu, FiUser, FiX } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { getAuthEventName, isAdminAuthenticated } from "../utils/adminAuth";
-import logo from "../assets/logo.png";
+import logo from "../assets/Logo.png";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
