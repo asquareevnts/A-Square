@@ -13,6 +13,9 @@ import { verifyEmailConnection } from './utils/emailService.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy (needed for Render/Heroku HTTPS)
+app.set('trust proxy', 1);
+
 // Initialize database
 initDatabase();
 
@@ -71,10 +74,12 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Google OAuth Strategy
+const callbackURL = process.env.GOOGLE_CALLBACK_URL || '/auth/google/callback';
+
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID || 'your-google-client-id',
   clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret',
-  callbackURL: '/auth/google/callback'
+  callbackURL
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     // Import here to avoid circular dependency
