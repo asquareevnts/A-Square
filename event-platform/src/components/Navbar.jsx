@@ -3,7 +3,7 @@ import logo from "../assets/logo.png";
 
 export default function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 w-full z-50 bg-[#0f0c29] border-b border-white/10">
+    <nav className="fixed top-0 left-0 z-50 w-full border-b border-slate-200 bg-white/90 backdrop-blur">
       <div className="max-w-7xl mx-auto px-6 h-[80px] flex items-center justify-between">
 
         {/* LOGO + BRAND */}
@@ -18,7 +18,7 @@ export default function Navbar() {
             text-lg md:text-xl
             font-semibold
             tracking-widest
-            text-white
+            text-slate-900
           ">
             ASQUARE EVENTS
           </span>
@@ -30,8 +30,8 @@ export default function Navbar() {
             to="/"
             className={({ isActive }) =>
               isActive
-                ? "text-pink-400"
-                : "text-gray-300 hover:text-white transition"
+                ? "text-indigo-600"
+                : "text-slate-600 hover:text-slate-900 transition"
             }
           >
             Home
@@ -41,8 +41,8 @@ export default function Navbar() {
             to="/events"
             className={({ isActive }) =>
               isActive
-                ? "text-pink-400"
-                : "text-gray-300 hover:text-white transition"
+                ? "text-indigo-600"
+                : "text-slate-600 hover:text-slate-900 transition"
             }
           >
             Events
@@ -52,38 +52,43 @@ export default function Navbar() {
             to="/gallery"
             className={({ isActive }) =>
               isActive
-                ? "text-pink-400"
-                : "text-gray-300 hover:text-white transition"
+                ? "text-indigo-600"
+                : "text-slate-600 hover:text-slate-900 transition"
             }
           >
             Gallery
           </NavLink>
 
           <NavLink
+            to="/products"
+            className={({ isActive }) =>
+              isActive
+                ? "text-indigo-600"
+                : "text-slate-600 hover:text-slate-900 transition"
+            }
+          >
+            Products
+          </NavLink>
+
+          <NavLink
             to="/contact"
             className={({ isActive }) =>
               isActive
-                ? "text-pink-400"
-                : "text-gray-300 hover:text-white transition"
+                ? "text-indigo-600"
+                : "text-slate-600 hover:text-slate-900 transition"
             }
           >
             Contact
           </NavLink>
+
         </div>
 
-        {/* CTA */}
-        <button className="
-          font-body
-          text-sm font-medium
-          px-5 py-2.5 rounded-xl
-          text-white
-          border border-white/40
-          hover:border-pink-400
-          hover:text-pink-300
-          transition-all
-        ">
-          Host Event
-        </button>
+        <NavLink
+          to="/signin"
+          className="font-body rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-900 transition-all hover:border-indigo-500 hover:text-indigo-600"
+        >
+          Sign In
+        </NavLink>
       </div>
     </nav>
   );

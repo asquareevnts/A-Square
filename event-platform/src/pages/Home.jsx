@@ -2,108 +2,99 @@ import { motion } from "framer-motion";
 
 export default function Home() {
   return (
-    /* MAIN HERO WRAPPER — SINGLE SOURCE OF HEIGHT */
-    <div className="relative min-h-screen bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white">
-
-      {/* BACKGROUND GLOWS (SAFE & CONTAINED) */}
-      {/* SUBTLE GRAIN OVERLAY */}
-        <div className="absolute inset-0 pointer-events-none opacity-[0.06] animate-grain">
-        <div className="w-full h-full bg-[url('/noise.png')]"></div>
-        <div className="absolute -top-32 -left-32 w-[460px] h-[460px] bg-purple-600/30 rounded-full blur-[120px]" />
-        <div className="absolute bottom-0 right-0 w-[360px] h-[360px] bg-pink-600/20 rounded-full blur-[120px]" />
-      </div>
-
-      {/* HERO CONTENT */}
-      <section className="relative z-10 h-screen flex items-center px-6 pt-[80px]">
-        <div className="max-w-6xl w-full mx-auto grid md:grid-cols-2 gap-12 items-center">
-
-          {/* LEFT CONTENT */}
+    <div className="min-h-screen bg-white text-slate-900">
+      <section className="px-6 pb-16 pt-12 md:pt-16">
+        <div className="mx-auto grid w-full max-w-7xl gap-10 md:grid-cols-2 md:items-center">
           <motion.div
-            initial={{ opacity: 0, y: 24 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            transition={{ duration: 0.55, ease: "easeOut" }}
           >
-            <h1 className="font-heading text-5xl md:text-6xl font-extrabold leading-tight tracking-tight">
-              Discover & Host <br />
-              <span className="relative inline-block">
-                <span className="font-elegant italic text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-                    Amazing Events
-                </span>
-
-                {/* Animated underline */}
-                <motion.span
-                    initial={{ scaleX: 0 }}
-                    animate={{ scaleX: 1 }}
-                    transition={{ duration: 0.8, ease: "easeOut", delay: 0.4 }}
-                    className="
-                    absolute left-0 -bottom-2 h-[2px] w-full
-                    origin-left
-                    bg-gradient-to-r from-purple-400 to-pink-500
-                    rounded-full
-                    "
-                />
-                </span>
-
+            <p className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-4 py-1 text-sm font-medium text-slate-700">
+              Premium event experiences
+            </p>
+            <h1 className="mt-5 text-4xl font-bold leading-tight tracking-tight md:text-6xl">
+              Discover events in a
+              <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent"> modern, modular way</span>
             </h1>
-
-            <p className="mt-6 font-body text-lg text-gray-300 max-w-xl leading-relaxed">
-              A modern platform to explore events, manage bookings,
-              and create unforgettable experiences — all in one place.
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-600">
+              Explore curated experiences, manage bookings smoothly, and host with confidence through an elegant white-first interface.
             </p>
-
-            <p className="mt-2 text-sm text-purple-300">
-              Trusted by creators, brands, and communities
-            </p>
-
-            <div className="mt-8 flex flex-col sm:flex-row gap-4">
-              <button
-                className="
-                  px-6 py-3 rounded-xl font-semibold
-                  bg-gradient-to-r from-purple-500 to-pink-500
-                  hover:scale-105
-                  hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]
-                  active:scale-95
-                  transition-all duration-300
-                "
-              >
+            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+              <button className="rounded-xl bg-slate-900 px-6 py-3 font-semibold text-white transition hover:bg-slate-800">
                 Explore Events
               </button>
-
-              <button
-                className="
-                  px-6 py-3 rounded-xl
-                  border border-white/30
-                  hover:bg-white/10
-                  transition-all duration-300
-                "
-              >
+              <button className="rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-800 transition hover:bg-slate-50">
                 Host an Event
               </button>
             </div>
           </motion.div>
 
-          {/* RIGHT GLASS CARD */}
           <motion.div
-            animate={{ y: [0, -6, 0] }}
-            transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            className="relative w-full md:w-[380px]"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.65, delay: 0.1, ease: "easeOut" }}
+            className="grid gap-4 sm:grid-cols-2"
           >
-            <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-pink-600 rounded-3xl blur opacity-25" />
-
-            <div className="relative backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-xl">
-              <h3 className="text-2xl font-semibold mb-4">
-                Why choose us?
-              </h3>
-
-              <ul className="space-y-4 text-gray-200">
-                <li>✨ Curated premium events</li>
-                <li>⚡ Fast & seamless booking</li>
-                <li>📱 Works as website & app</li>
-                <li>🔒 Secure & scalable</li>
-              </ul>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-slate-500">Active Events</p>
+              <p className="mt-2 text-3xl font-bold">120+</p>
+              <p className="mt-2 text-sm text-emerald-600">+18% this month</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-medium text-slate-500">Happy Attendees</p>
+              <p className="mt-2 text-3xl font-bold">35K</p>
+              <p className="mt-2 text-sm text-indigo-600">Across multiple cities</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:col-span-2">
+              <p className="text-sm font-medium text-slate-500">Trusted by creators and brands</p>
+              <div className="mt-4 grid grid-cols-3 gap-3 text-center text-sm font-medium text-slate-700">
+                <span className="rounded-lg bg-slate-50 px-3 py-2">Corporate</span>
+                <span className="rounded-lg bg-slate-50 px-3 py-2">Music</span>
+                <span className="rounded-lg bg-slate-50 px-3 py-2">Community</span>
+              </div>
             </div>
           </motion.div>
+        </div>
+      </section>
 
+      <section className="px-6 pb-20">
+        <div className="mx-auto max-w-7xl">
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              {
+                title: "Curated Discovery",
+                text: "Find premium events with clean categories and focused recommendations."
+              },
+              {
+                title: "Seamless Booking",
+                text: "Book quickly with a reliable flow built for desktop and mobile users."
+              },
+              {
+                title: "Organizer Control",
+                text: "Manage schedules, attendance, and updates from one modular dashboard."
+              }
+            ].map((item) => (
+              <motion.article
+                key={item.title}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.4 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+                className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"
+              >
+                <h3 className="text-xl font-semibold text-slate-900">{item.title}</h3>
+                <p className="mt-3 leading-relaxed text-slate-600">{item.text}</p>
+              </motion.article>
+            ))}
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-8">
+            <h2 className="text-2xl font-semibold text-slate-900">Built for premium event journeys</h2>
+            <p className="mt-3 max-w-2xl text-slate-600">
+              Minimal visuals, strong typography, and modular content blocks create a polished experience that scales with your brand.
+            </p>
+          </div>
         </div>
       </section>
     </div>

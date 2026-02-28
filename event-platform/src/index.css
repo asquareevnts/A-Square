@@ -8,8 +8,7 @@ body,
   margin: 0;
   padding: 0;
 
-  /* FINAL GLOBAL BACKGROUND */
-  background-color: #0f0c29;
+  background-color: #ffffff;
 
   /* Prevent horizontal scroll glitches */
   overflow-x: hidden;
