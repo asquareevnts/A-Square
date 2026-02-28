@@ -1,0 +1,79 @@
+import express from 'express';
+import cors from 'cors';
+import session from 'express-session';
+import passport from 'passport';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import authRoutes from './routes/auth.js';
+import { initDatabase } from './db/database.js';
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Initialize database
+initDatabase();
+
+// Middleware
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Passport initialization
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Google OAuth Strategy
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID || 'your-google-client-id',
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'your-google-client-secret',
+  callbackURL: '/auth/google/callback'
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    // Import here to avoid circular dependency
+    const { findOrCreateGoogleUser } = await import('./db/database.js');
+    const user = await findOrCreateGoogleUser(profile);
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
+
+// Serialize/deserialize user
+passport.serializeUser((user, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const { getUserById } = await import('./db/database.js');
+    const user = await getUserById(id);
+    done(null, user);
+  } catch (error) {
+    done(error, null);
+  }
+});
+
+// Routes
+app.use('/auth', authRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', message: 'Server is running' });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});
