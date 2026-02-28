@@ -42,6 +42,23 @@ export function AuthProvider({ children }) {
 
   // Check if user is authenticated on mount
   useEffect(() => {
+    // Check for OAuth redirect data in URL first
+    const params = new URLSearchParams(window.location.search);
+    const authData = params.get('authUser');
+    if (authData) {
+      try {
+        const userData = JSON.parse(atob(authData.replace(/-/g, '+').replace(/_/g, '/')));
+        setUser(userData);
+        writeStoredUser(userData);
+        // Clean up URL without reload
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+        setLoading(false);
+        return;
+      } catch (e) {
+        console.error('Failed to parse auth data from URL:', e);
+      }
+    }
     checkAuth();
   }, []);
 

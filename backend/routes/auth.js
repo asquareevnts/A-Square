@@ -179,7 +179,17 @@ router.get('/google/callback',
       delete req.session.frontendUrl;
     }
 
-    res.redirect(`${frontendUrl}/`);
+    // Encode user data in URL so frontend can pick it up
+    // (avoids cross-domain cookie issues)
+    const userData = {
+      id: req.user.id,
+      email: req.user.email,
+      fullName: req.user.full_name,
+      profilePicture: req.user.profile_picture,
+      provider: req.user.provider
+    };
+    const encoded = Buffer.from(JSON.stringify(userData)).toString('base64url');
+    res.redirect(`${frontendUrl}/?authUser=${encoded}`);
   }
 );
 
