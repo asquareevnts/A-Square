@@ -4,6 +4,7 @@ import session from 'express-session';
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import authRoutes from './routes/auth.js';
+import contentRoutes from './routes/content.js';
 import { initDatabase } from './db/database.js';
 
 const app = express();
@@ -93,6 +94,7 @@ passport.deserializeUser(async (id, done) => {
 
 // Routes
 app.use('/auth', authRoutes);
+app.use('/api/content', contentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
