@@ -153,4 +153,46 @@ export function getUserStats() {
   };
 }
 
+// Create password reset token
+export function createPasswordResetToken(userId, token, expiresInMinutes = 30) {
+  // Delete any existing reset tokens for this user
+  const deleteStmt = db.prepare('DELETE FROM password_reset_tokens WHERE user_id = ?');
+  deleteStmt.run(userId);
+  
+  // Create new reset token
+  const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000).toISOString();
+  const stmt = db.prepare(`
+    INSERT INTO password_reset_tokens (user_id, token, expires_at)
+    VALUES (?, ?, ?)
+  `);
+  
+  stmt.run(userId, token, expiresAt);
+  return token;
+}
+
+// Verify password reset token
+export function verifyPasswordResetToken(token) {
+  const stmt = db.prepare(`
+    SELECT prt.*, u.email, u.full_name 
+    FROM password_reset_tokens prt
+    JOIN users u ON u.id = prt.user_id
+    WHERE prt.token = ? AND prt.expires_at > datetime('now')
+  `);
+  
+  return stmt.get(token);
+}
+
+// Delete password reset token
+export function deletePasswordResetToken(token) {
+  const stmt = db.prepare('DELETE FROM password_reset_tokens WHERE token = ?');
+  stmt.run(token);
+}
+
+// Update user password
+export async function updateUserPassword(userId, newPassword) {
+  const hashedPassword = await bcrypt.hash(newPassword, 10);
+  const stmt = db.prepare('UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?');
+  stmt.run(hashedPassword, userId);
+}
+
 export default db;

@@ -8,16 +8,23 @@
     "start": "node index.js",
     "dev": "nodemon index.js"
   },
-  "keywords": ["express", "sqlite", "oauth", "authentication"],
+  "keywords": [
+    "express",
+    "sqlite",
+    "oauth",
+    "authentication"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "better-sqlite3": "^11.8.0",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "express-session": "^1.18.1",
+    "nodemailer": "^8.0.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
   },

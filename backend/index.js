@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
@@ -5,12 +8,16 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import authRoutes from './routes/auth.js';
 import { initDatabase } from './db/database.js';
+import { verifyEmailConnection } from './utils/emailService.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize database
 initDatabase();
+
+// Verify email service (for password reset)
+verifyEmailConnection();
 
 // Middleware
 app.use(cors({
