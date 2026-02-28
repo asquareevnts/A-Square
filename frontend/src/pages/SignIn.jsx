@@ -96,9 +96,10 @@ export default function SignIn() {
     setResetLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/auth/forgot-password", {
+      const response = await fetch(buildApiUrl("/auth/forgot-password"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ email: resetEmail })
       });
 
@@ -139,9 +140,10 @@ export default function SignIn() {
     setResetLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/auth/reset-password", {
+      const response = await fetch(buildApiUrl("/auth/reset-password"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ token: resetToken, newPassword })
       });
 

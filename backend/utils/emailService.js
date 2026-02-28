@@ -1,16 +1,23 @@
 import nodemailer from 'nodemailer';
 
 // Create reusable transporter
-// MAILTRAP - Easy testing without real emails!
-// Sign up at https://mailtrap.io/ (FREE)
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'sandbox.smtp.mailtrap.io',
-  port: process.env.SMTP_PORT || 2525,
-  auth: {
-    user: process.env.SMTP_USER || 'your-mailtrap-username',
-    pass: process.env.SMTP_PASS || 'your-mailtrap-password'
+// Gmail with App Password
+let transporter;
+
+function getTransporter() {
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASSWORD
+      }
+    });
   }
-});
+  return transporter;
+}
 
 // Alternative: Use Ethereal for testing (creates a fake SMTP service)
 // Uncomment this for testing without real email credentials
@@ -159,7 +166,7 @@ export async function sendPasswordResetEmail(email, resetToken, fullName) {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    const info = await getTransporter().sendMail(mailOptions);
     console.log('✅ Password reset email sent:', info.messageId);
     console.log('📧 Email sent to:', email);
     
@@ -187,7 +194,7 @@ export async function sendPasswordResetEmail(email, resetToken, fullName) {
 
 export async function verifyEmailConnection() {
   try {
-    await transporter.verify();
+    await getTransporter().verify();
     console.log('✅ Email service is ready');
     return true;
   } catch (error) {

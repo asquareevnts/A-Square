@@ -273,6 +273,15 @@ router.post('/forgot-password', async (req, res) => {
     // Store reset token in database (expires in 30 minutes)
     createPasswordResetToken(user.id, resetToken, 30);
 
+    // Local/development flow: return code directly without requiring SMTP
+    if (process.env.NODE_ENV !== 'production') {
+      return res.json({
+        success: true,
+        message: 'Use this reset code to set a new password:',
+        resetToken
+      });
+    }
+
     // Send reset email
     try {
       await sendPasswordResetEmail(user.email, resetToken, user.full_name);
@@ -283,16 +292,7 @@ router.post('/forgot-password', async (req, res) => {
       });
     } catch (emailError) {
       console.error('Email sending failed:', emailError);
-      
-      // For development: return token if email fails
-      if (process.env.NODE_ENV === 'development') {
-        return res.json({
-          success: true,
-          message: 'Email service unavailable. Use this code for testing:',
-          resetToken // Only in development!
-        });
-      }
-      
+
       return res.status(500).json({
         success: false,
         message: 'Failed to send reset email. Please try again later.'

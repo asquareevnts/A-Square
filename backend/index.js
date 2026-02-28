@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import 'dotenv/config';
 
 import express from 'express';
 import cors from 'cors';
@@ -38,7 +37,10 @@ app.use(
       }
 
       const isAllowed =
-        allowedOrigins.includes(origin) || /\.trycloudflare\.com$/i.test(origin) || /\.netlify\.app$/i.test(origin);
+        allowedOrigins.includes(origin) ||
+        /\.trycloudflare\.com$/i.test(origin) ||
+        /\.netlify\.app$/i.test(origin) ||
+        /\.onrender\.com$/i.test(origin);
 
       if (isAllowed) {
         callback(null, true);
@@ -102,6 +104,14 @@ passport.deserializeUser(async (id, done) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/content', contentRoutes);
+
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Event backend is running',
+    health: '/api/health'
+  });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {
