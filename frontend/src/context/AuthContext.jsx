@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { buildApiUrl } from '../config/api';
 
 const AuthContext = createContext(null);
 const USER_STORAGE_KEY = 'event-platform-user';
@@ -46,7 +47,7 @@ export function AuthProvider({ children }) {
 
   const checkAuth = async () => {
     try {
-      const response = await fetch('http://localhost:5000/auth/me', {
+      const response = await fetch(buildApiUrl('/auth/me'), {
         credentials: 'include'
       });
       
@@ -75,7 +76,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await fetch('http://localhost:5000/auth/logout', {
+      await fetch(buildApiUrl('/auth/logout'), {
         method: 'POST',
         credentials: 'include'
       });
