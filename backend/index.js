@@ -31,7 +31,7 @@ app.use(
       }
 
       const isAllowed =
-        allowedOrigins.includes(origin) || /\.trycloudflare\.com$/i.test(origin);
+        allowedOrigins.includes(origin) || /\.trycloudflare\.com$/i.test(origin) || /\.netlify\.app$/i.test(origin);
 
       if (isAllowed) {
         callback(null, true);
