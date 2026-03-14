@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 import { FiMail, FiLock, FiUser, FiPhone, FiEye, FiEyeOff } from "react-icons/fi";
@@ -9,6 +9,8 @@ import { buildApiUrl } from "../config/api";
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
   const { login } = useAuth();
   
   const [formData, setFormData] = useState({
@@ -87,7 +89,7 @@ export default function SignUp() {
       if (data.success) {
         clearAdminSession();
         login(data.user);
-        navigate("/");
+        navigate(redirectTo);
       } else {
         setError(data.message || "Registration failed");
       }
@@ -102,7 +104,7 @@ export default function SignUp() {
       if (localResult.success) {
         clearAdminSession();
         login(localResult.user);
-        navigate("/");
+        navigate(redirectTo);
       } else {
         setError(localResult.message || "Unable to create account right now.");
       }
@@ -112,7 +114,11 @@ export default function SignUp() {
   };
 
   const handleGoogleSignUp = () => {
-    window.location.href = buildApiUrl("/auth/google");
+    const url = new URL(buildApiUrl("/auth/google"), window.location.origin);
+    if (redirectTo && redirectTo !== "/") {
+      url.searchParams.set("state", btoa(redirectTo));
+    }
+    window.location.href = url.toString();
   };
 
   const getStrengthColor = () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiX } from "react-icons/fi";
@@ -15,6 +15,8 @@ import { buildApiUrl } from "../config/api";
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/";
   const { login, logout } = useAuth();
 
   const [identifier, setIdentifier] = useState("");
@@ -67,7 +69,7 @@ export default function SignIn() {
       if (data.success) {
         clearAdminSession();
         login(data.user);
-        navigate("/");
+        navigate(redirectTo);
       } else {
         setError(data.message || "Login failed");
       }
@@ -76,7 +78,7 @@ export default function SignIn() {
       if (localResult.success) {
         clearAdminSession();
         login(localResult.user);
-        navigate("/");
+        navigate(redirectTo);
       } else {
         setError("Unable to connect to server. Please try again.");
       }
@@ -86,7 +88,11 @@ export default function SignIn() {
   };
 
   const handleGoogleSignIn = () => {
-    window.location.href = buildApiUrl("/auth/google");
+    const url = new URL(buildApiUrl("/auth/google"), window.location.origin);
+    if (redirectTo && redirectTo !== "/") {
+      url.searchParams.set("state", btoa(redirectTo));
+    }
+    window.location.href = url.toString();
   };
 
   const handleForgotPasswordSubmit = async (e) => {

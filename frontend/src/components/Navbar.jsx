@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { FiMenu, FiUser, FiX } from "react-icons/fi";
+import { FiMenu, FiUser, FiX, FiShoppingCart } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/CartContext";
 import { getAuthEventName, isAdminAuthenticated } from "../utils/adminAuth";
 import logo from "../assets/Logo.png";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useAuth();
+  const { totalItems } = useCart();
   const [isAdminSession, setIsAdminSession] = useState(() => isAdminAuthenticated());
   const isSignedIn = Boolean(user) || isAdminSession;
   const profileName = user?.fullName || user?.name || user?.email || (isSignedIn ? "Admin" : "");
@@ -51,6 +53,20 @@ export default function Navbar() {
           <NavLink to="/products" className={navItemClass}>Products</NavLink>
           <NavLink to="/contact" className={navItemClass}>Contact</NavLink>
         </div>
+
+        {/* Cart icon — desktop */}
+        <NavLink
+          to="/cart"
+          className="relative hidden items-center md:flex rounded-xl border border-slate-300 p-2.5 text-slate-700 transition hover:border-indigo-500 hover:text-indigo-600"
+          aria-label="Shopping cart"
+        >
+          <FiShoppingCart size={18} />
+          {totalItems > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
+              {totalItems > 9 ? "9+" : totalItems}
+            </span>
+          )}
+        </NavLink>
 
         {!isSignedIn ? (
           <div className="hidden items-center gap-2 md:flex">
@@ -106,6 +122,15 @@ export default function Navbar() {
             <NavLink to="/gallery" onClick={closeMobileMenu} className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">Gallery</NavLink>
             <NavLink to="/products" onClick={closeMobileMenu} className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">Products</NavLink>
             <NavLink to="/contact" onClick={closeMobileMenu} className="rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">Contact</NavLink>
+            <NavLink to="/cart" onClick={closeMobileMenu} className="flex items-center gap-2 rounded-lg px-3 py-2 text-slate-700 hover:bg-slate-50">
+              <FiShoppingCart size={14} />
+              Cart
+              {totalItems > 0 && (
+                <span className="ml-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </NavLink>
             {!isSignedIn ? (
               <div className="mt-2 grid grid-cols-2 gap-2">
                 <NavLink to="/signin" onClick={closeMobileMenu} className="rounded-lg border border-slate-300 px-3 py-2 text-center text-slate-900">Sign In</NavLink>

@@ -7,6 +7,7 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import authRoutes from './routes/auth.js';
 import contentRoutes from './routes/content.js';
+import paymentRoutes from './routes/payment.js';
 import { initDatabase } from './db/database.js';
 import { verifyEmailConnection } from './utils/emailService.js';
 
@@ -110,6 +111,7 @@ passport.deserializeUser(async (id, done) => {
 // Routes
 app.use('/auth', authRoutes);
 app.use('/api/content', contentRoutes);
+app.use('/api/payment', paymentRoutes);
 
 app.get('/', (req, res) => {
   res.json({
