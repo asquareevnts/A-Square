@@ -3,31 +3,15 @@ import { NavLink } from "react-router-dom";
 import { FiMenu, FiUser, FiX, FiShoppingCart } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
-import { getAuthEventName, isAdminAuthenticated } from "../utils/adminAuth";
 import logo from "../assets/Logo.png";
 
 export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { user } = useAuth();
   const { totalItems } = useCart();
-  const [isAdminSession, setIsAdminSession] = useState(() => isAdminAuthenticated());
-  const isSignedIn = Boolean(user) || isAdminSession;
-  const profileName = user?.fullName || user?.name || user?.email || (isSignedIn ? "Admin" : "");
-
-  useEffect(() => {
-    const syncAdminSession = () => {
-      setIsAdminSession(isAdminAuthenticated());
-    };
-
-    const authEvent = getAuthEventName();
-    window.addEventListener(authEvent, syncAdminSession);
-    window.addEventListener("storage", syncAdminSession);
-
-    return () => {
-      window.removeEventListener(authEvent, syncAdminSession);
-      window.removeEventListener("storage", syncAdminSession);
-    };
-  }, []);
+  const isSignedIn = Boolean(user);
+  const isAdmin = user?.role === "admin";
+  const profileName = user?.fullName || user?.name || user?.email || "";
 
   function closeMobileMenu() {
     setIsMobileMenuOpen(false);
@@ -85,7 +69,7 @@ export default function Navbar() {
           </div>
         ) : (
           <div className="hidden items-center gap-2 md:flex">
-            {isAdminSession ? (
+            {isAdmin ? (
               <NavLink
                 to="/admin"
                 className="rounded-xl border border-indigo-300 px-4 py-2.5 text-sm font-medium text-indigo-700 transition-all hover:bg-indigo-50"
@@ -138,7 +122,7 @@ export default function Navbar() {
               </div>
             ) : (
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {isAdminSession ? (
+                {isAdmin ? (
                   <NavLink
                     to="/admin"
                     onClick={closeMobileMenu}

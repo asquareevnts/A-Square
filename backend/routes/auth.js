@@ -6,23 +6,40 @@ import {
   getUserByEmail,
   verifyPassword,
   updateLastLogin,
+  updateUserProfile,
   getUserStats,
   createPasswordResetToken,
   verifyPasswordResetToken,
   deletePasswordResetToken,
   updateUserPassword
 } from '../db/database.js';
+import { requireAdmin, requireAuthenticated } from '../middleware/auth.js';
 import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 const router = express.Router();
+
+function serializeUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    fullName: user.full_name,
+    phone: user.phone,
+    address: user.address,
+    profilePicture: user.profile_picture,
+    provider: user.provider,
+    role: user.role,
+    emailVerified: user.email_verified,
+  };
+}
 
 // Local Registration
 router.post('/register', async (req, res) => {
   try {
     const { email, password, fullName, phone } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
     // Validation
-    if (!email || !password || !fullName) {
+    if (!normalizedEmail || !password || !fullName) {
       return res.status(400).json({ 
         success: false, 
         message: 'Email, password, and full name are required' 
@@ -31,7 +48,7 @@ router.post('/register', async (req, res) => {
 
     // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(normalizedEmail)) {
       return res.status(400).json({ 
         success: false, 
         message: 'Invalid email format' 
@@ -46,7 +63,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const user = await createUser(email, password, fullName, phone);
+    const user = await createUser(normalizedEmail, password, fullName.trim(), phone?.trim());
     
     // Log the user in automatically after registration
     req.login(user, (err) => {
@@ -60,11 +77,7 @@ router.post('/register', async (req, res) => {
       res.status(201).json({
         success: true,
         message: 'Registration successful',
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.full_name
-        }
+        user: serializeUser(user)
       });
     });
 
@@ -88,15 +101,16 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({ 
         success: false, 
         message: 'Email and password are required' 
       });
     }
 
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(normalizedEmail);
 
     if (!user) {
       return res.status(401).json({ 
@@ -122,7 +136,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    updateLastLogin(user.id);
+    await updateLastLogin(user.id);
 
     req.login(user, (err) => {
       if (err) {
@@ -135,12 +149,7 @@ router.post('/login', async (req, res) => {
       res.json({
         success: true,
         message: 'Login successful',
-        user: {
-          id: user.id,
-          email: user.email,
-          fullName: user.full_name,
-          profilePicture: user.profile_picture
-        }
+        user: serializeUser(user)
       });
     });
 
@@ -185,8 +194,12 @@ router.get('/google/callback',
       id: req.user.id,
       email: req.user.email,
       fullName: req.user.full_name,
+      phone: req.user.phone,
+      address: req.user.address,
       profilePicture: req.user.profile_picture,
-      provider: req.user.provider
+      provider: req.user.provider,
+      role: req.user.role,
+      emailVerified: req.user.email_verified,
     };
     const encoded = Buffer.from(JSON.stringify(userData)).toString('base64url');
     res.redirect(`${frontendUrl}/?authUser=${encoded}`);
@@ -202,9 +215,12 @@ router.post('/logout', (req, res) => {
         message: 'Logout failed' 
       });
     }
-    res.json({ 
-      success: true, 
-      message: 'Logged out successfully' 
+    req.session?.destroy(() => {
+      res.clearCookie('event.sid');
+      res.json({ 
+        success: true, 
+        message: 'Logged out successfully' 
+      });
     });
   });
 });
@@ -220,22 +236,42 @@ router.get('/me', (req, res) => {
 
   res.json({
     success: true,
-    user: {
-      id: req.user.id,
-      email: req.user.email,
-      fullName: req.user.full_name,
-      phone: req.user.phone,
-      profilePicture: req.user.profile_picture,
-      provider: req.user.provider,
-      emailVerified: req.user.email_verified
-    }
+    user: serializeUser(req.user)
   });
 });
 
-// Get user statistics (admin only)
-router.get('/stats', (req, res) => {
+router.put('/me', requireAuthenticated, async (req, res) => {
   try {
-    const stats = getUserStats();
+    const { fullName, phone, address } = req.body;
+    const cleanedName = String(fullName || '').trim();
+
+    if (!cleanedName) {
+      return res.status(400).json({ success: false, message: 'Full name is required' });
+    }
+
+    const user = await updateUserProfile(req.user.id, {
+      fullName: cleanedName,
+      phone,
+      address,
+    });
+
+    req.login(user, (loginError) => {
+      if (loginError) {
+        return res.status(500).json({ success: false, message: 'Profile updated but session refresh failed' });
+      }
+
+      return res.json({ success: true, user: serializeUser(user) });
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update profile' });
+  }
+});
+
+// Get user statistics (admin only)
+router.get('/stats', requireAdmin, async (req, res) => {
+  try {
+    const stats = await getUserStats();
     res.json({ success: true, stats });
   } catch (error) {
     console.error('Stats error:', error);
@@ -250,8 +286,9 @@ router.get('/stats', (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
-    if (!email) {
+    if (!normalizedEmail) {
       return res.status(400).json({ 
         success: false, 
         message: 'Email is required' 
@@ -259,7 +296,7 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     // Check if user exists
-    const user = getUserByEmail(email);
+    const user = await getUserByEmail(normalizedEmail);
 
     if (!user) {
       // Don't reveal if user exists or not for security
@@ -281,7 +318,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = crypto.randomInt(100000, 999999).toString();
 
     // Store reset token in database (expires in 30 minutes)
-    createPasswordResetToken(user.id, resetToken, 30);
+    await createPasswordResetToken(user.id, resetToken, 30);
 
     // Local/development flow: return code directly without requiring SMTP
     if (process.env.NODE_ENV !== 'production') {
@@ -339,7 +376,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // Verify reset token
-    const resetData = verifyPasswordResetToken(token);
+    const resetData = await verifyPasswordResetToken(token);
 
     if (!resetData) {
       return res.status(400).json({ 
@@ -352,7 +389,7 @@ router.post('/reset-password', async (req, res) => {
     await updateUserPassword(resetData.user_id, newPassword);
 
     // Delete reset token
-    deletePasswordResetToken(token);
+    await deletePasswordResetToken(token);
 
     res.json({
       success: true,

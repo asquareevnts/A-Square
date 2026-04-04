@@ -40,51 +40,52 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => readStoredUser());
   const [loading, setLoading] = useState(true);
 
-  // Check if user is authenticated on mount
-  useEffect(() => {
-    // Check for OAuth redirect data in URL first
-    const params = new URLSearchParams(window.location.search);
-    const authData = params.get('authUser');
-    if (authData) {
-      try {
-        const userData = JSON.parse(atob(authData.replace(/-/g, '+').replace(/_/g, '/')));
-        setUser(userData);
-        writeStoredUser(userData);
-        // Clean up URL without reload
-        const cleanUrl = window.location.pathname + window.location.hash;
-        window.history.replaceState({}, '', cleanUrl);
-        setLoading(false);
-        return;
-      } catch (e) {
-        console.error('Failed to parse auth data from URL:', e);
-      }
-    }
-    checkAuth();
-  }, []);
-
   const checkAuth = async () => {
     try {
       const response = await fetch(buildApiUrl('/auth/me'), {
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
           setUser(data.user);
           writeStoredUser(data.user);
-          return;
+          return data.user;
         }
       }
 
       setUser(null);
       writeStoredUser(null);
+      return null;
     } catch (error) {
       console.error('Auth check failed:', error);
+      setUser(null);
+      writeStoredUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authData = params.get('authUser');
+
+    if (authData) {
+      try {
+        const userData = JSON.parse(atob(authData.replace(/-/g, '+').replace(/_/g, '/')));
+        setUser(userData);
+        writeStoredUser(userData);
+        const cleanUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', cleanUrl);
+      } catch (e) {
+        console.error('Failed to parse auth data from URL:', e);
+      }
+    }
+
+    void checkAuth();
+  }, []);
 
   const login = (userData) => {
     setUser(userData);

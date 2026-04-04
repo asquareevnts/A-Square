@@ -1,3 +1,8 @@
+databases:
+  - name: event-postgres
+    databaseName: event_platform
+    user: event_platform_user
+
 services:
   - type: web
     name: event-backend
@@ -11,8 +16,18 @@ services:
         value: production
       - key: SESSION_SECRET
         generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: event-postgres
+          property: connectionString
       - key: FRONTEND_URL
         value: https://event-frontend-w18p.onrender.com
+      - key: ADMIN_EMAIL
+        value: admin@asquareevents.com
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_FULL_NAME
+        value: ASquare Events Admin
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET
@@ -23,6 +38,16 @@ services:
         sync: false
       - key: EMAIL_PASSWORD
         sync: false
+      - key: ADMIN_WHATSAPP_NUMBER
+        sync: false
+      - key: WHATSAPP_CLOUD_ACCESS_TOKEN
+        sync: false
+      - key: WHATSAPP_CLOUD_PHONE_NUMBER_ID
+        sync: false
+      - key: WHATSAPP_CLOUD_API_VERSION
+        value: v22.0
+      - key: WHATSAPP_SEND_CUSTOMER_ACK
+        value: true
 
   - type: web
     name: event-frontend

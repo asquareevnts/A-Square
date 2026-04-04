@@ -1,115 +1,102 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FiTrash2, FiMinus, FiPlus, FiShoppingCart } from "react-icons/fi";
 import { useCart } from "../context/CartContext";
 import { buildApiUrl } from "../config/api";
-
-const RAZORPAY_KEY_ID = import.meta.env.VITE_RAZORPAY_KEY_ID;
-
-function loadRazorpayScript() {
-  return new Promise((resolve) => {
-    if (document.getElementById("razorpay-sdk")) {
-      resolve(true);
-      return;
-    }
-    const script = document.createElement("script");
-    script.id = "razorpay-sdk";
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.body.appendChild(script);
-  });
-}
+import { useAuth } from "../context/AuthContext";
 
 export default function Cart() {
   const { cartItems, addToCart, removeFromCart, removeItemCompletely, clearCart, totalPrice } =
     useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [quoteForm, setQuoteForm] = useState({
+    customerName: "",
+    phone: "",
+    email: "",
+    requirementDate: "",
+    eventLocation: "",
+    notes: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState("");
+  const [requestSuccess, setRequestSuccess] = useState("");
+  const profileDefaults = useMemo(
+    () => ({
+      fullName: user?.fullName || user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      address: user?.address || "",
+    }),
+    [user]
+  );
 
-  const handleCheckout = useCallback(async () => {
+  const minDate = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today.toISOString().split("T")[0];
+  }, []);
+
+  const handleInputChange = useCallback((event) => {
+    const { name, value } = event.target;
+    setRequestSuccess("");
+    setQuoteForm((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  useEffect(() => {
+    setQuoteForm((prev) => ({
+      customerName: prev.customerName || profileDefaults.fullName || "",
+      phone: prev.phone || profileDefaults.phone || "",
+      email: prev.email || profileDefaults.email || "",
+      requirementDate: prev.requirementDate || "",
+      eventLocation: prev.eventLocation || profileDefaults.address || "",
+      notes: prev.notes || "",
+    }));
+  }, [profileDefaults]);
+
+  const handleGetQuote = useCallback(async () => {
     if (cartItems.length === 0) return;
-
-    const sdkLoaded = await loadRazorpayScript();
-    if (!sdkLoaded) {
-      alert("Failed to load payment gateway. Please check your connection.");
+    if (!quoteForm.customerName.trim() || !quoteForm.phone.trim() || !quoteForm.requirementDate) {
+      setRequestError("Please fill name, phone number and required date.");
       return;
     }
 
+    setRequestError("");
+    setRequestSuccess("");
+    setIsSubmitting(true);
+
     try {
-      // 1. Create order on backend
-      const res = await fetch(buildApiUrl("/api/payment/create-order"), {
+      const res = await fetch(buildApiUrl("/api/quotes/request"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
-          amount: totalPrice,
-          currency: "INR",
-          receipt: `order_${Date.now()}`,
-          notes: {
-            items: cartItems.map((i) => `${i.name} x${i.qty}`).join(", "),
-          },
+          customerName: quoteForm.customerName.trim(),
+          phone: quoteForm.phone.trim(),
+          email: quoteForm.email.trim(),
+          requirementDate: quoteForm.requirementDate,
+          eventLocation: quoteForm.eventLocation.trim(),
+          notes: quoteForm.notes.trim(),
+          cartItems,
+          totalAmount: totalPrice,
         }),
       });
 
-      if (!res.ok) throw new Error("Could not create payment order");
+      const result = await res.json();
+      if (!res.ok || !result?.quote?.id) {
+        throw new Error(result?.error || "Could not create quote request");
+      }
 
-      const order = await res.json();
-
-      // 2. Open Razorpay checkout
-      const options = {
-        key: RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
-        name: "Asquare Events",
-        description: "Event Products Checkout",
-        order_id: order.id,
-        handler: async (response) => {
-          // 3. Verify payment on backend
-          const verifyRes = await fetch(buildApiUrl("/api/payment/verify"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: "include",
-            body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            }),
-          });
-
-          const result = await verifyRes.json();
-          if (result.success) {
-            clearCart();
-            navigate("/payment-success", {
-              state: {
-                paymentId: result.paymentId,
-                orderId: result.orderId,
-                total: totalPrice,
-              },
-            });
-          } else {
-            alert("Payment verification failed. Please contact support.");
-          }
-        },
-        prefill: {
-          name: "",
-          email: "",
-          contact: "",
-        },
-        theme: { color: "#4f46e5" },
-        modal: {
-          ondismiss: () => {
-            // User closed modal without paying — do nothing
-          },
-        },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      setRequestSuccess(`Quote request #${result.quote.id} submitted successfully.`);
+      clearCart();
+      navigate("/products");
     } catch (err) {
-      console.error("Checkout error:", err);
-      alert("Something went wrong during checkout. Please try again.");
+      console.error("Quote request error:", err);
+      setRequestError(err.message || "Something went wrong while creating the quote request.");
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [cartItems, totalPrice, clearCart, navigate]);
+  }, [cartItems, quoteForm, totalPrice, clearCart, navigate]);
 
   if (cartItems.length === 0) {
     return (
@@ -186,20 +173,98 @@ export default function Cart() {
           ))}
         </ul>
 
-        {/* Order summary */}
+        {/* Quote summary */}
         <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
           <div className="flex items-center justify-between text-slate-700">
-            <span>Subtotal</span>
+            <span>Estimated Total</span>
             <span className="font-semibold">₹ {totalPrice.toLocaleString("en-IN")}</span>
           </div>
           <div className="mt-1 flex items-center justify-between text-xs text-slate-500">
-            <span>Taxes &amp; fees may apply</span>
+            <span>Final pricing will be confirmed by admin after review</span>
           </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm text-slate-700">
+              Full Name*
+              <input
+                type="text"
+                name="customerName"
+                value={quoteForm.customerName}
+                onChange={handleInputChange}
+                placeholder="Enter your name"
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Phone Number*
+              <input
+                type="tel"
+                name="phone"
+                value={quoteForm.phone}
+                onChange={handleInputChange}
+                placeholder="Enter your phone"
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Email
+              <input
+                type="email"
+                name="email"
+                value={quoteForm.email}
+                onChange={handleInputChange}
+                placeholder="Enter your email"
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              />
+            </label>
+            <label className="text-sm text-slate-700">
+              Required Date*
+              <input
+                type="date"
+                name="requirementDate"
+                value={quoteForm.requirementDate}
+                min={minDate}
+                onChange={handleInputChange}
+                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+              />
+            </label>
+          </div>
+
+          <label className="mt-3 block text-sm text-slate-700">
+            Event Location
+            <input
+              type="text"
+              name="eventLocation"
+              value={quoteForm.eventLocation}
+              onChange={handleInputChange}
+              placeholder="City / Venue"
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            />
+          </label>
+
+          <label className="mt-3 block text-sm text-slate-700">
+            Additional Requirements
+            <textarea
+              name="notes"
+              value={quoteForm.notes}
+              onChange={handleInputChange}
+              rows={3}
+              placeholder="Mention timing, setup needs, quantity notes, etc."
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500"
+            />
+          </label>
+
+          {requestError ? <p className="mt-3 text-sm font-medium text-red-600">{requestError}</p> : null}
+          {requestSuccess ? <p className="mt-3 text-sm font-medium text-emerald-600">{requestSuccess}</p> : null}
+
           <button
-            onClick={handleCheckout}
+            onClick={handleGetQuote}
+            disabled={isSubmitting}
             className="mt-5 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 py-3 text-sm font-bold text-white transition hover:from-indigo-700 hover:to-purple-700"
           >
-            Pay ₹ {totalPrice.toLocaleString("en-IN")} via Razorpay
+            {isSubmitting
+              ? "Preparing Quote Request..."
+              : `Get Quote for ₹ ${totalPrice.toLocaleString("en-IN")}`}
           </button>
         </div>
       </div>

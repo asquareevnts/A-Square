@@ -1,14 +1,16 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { defaultProducts, loadProducts, saveProducts } from "../data/productsStore";
 import { defaultContactInfo, loadContactInfo, saveContactInfo } from "../data/contactStore";
 import { defaultEvents, loadEvents, saveEvents } from "../data/eventsStore";
 import { defaultGalleryItems, loadGalleryItems, saveGalleryItems } from "../data/galleryStore";
 import { defaultSocialLinks, loadSocialLinks, saveSocialLinks } from "../data/socialLinksStore";
-import { clearAdminSession } from "../utils/adminAuth";
+import { buildApiUrl } from "../config/api";
+import { useAuth } from "../context/AuthContext";
 
 export default function Admin() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [products, setProducts] = useState(() => loadProducts());
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -30,10 +32,66 @@ export default function Admin() {
 
   const [contactInfo, setContactInfo] = useState(() => loadContactInfo());
   const [socialLinks, setSocialLinks] = useState(() => loadSocialLinks());
+  const [quoteRequests, setQuoteRequests] = useState([]);
+  const [quotesLoading, setQuotesLoading] = useState(true);
+  const [quotesError, setQuotesError] = useState("");
+  const [activeQuoteAction, setActiveQuoteAction] = useState(null);
 
   const totalProducts = useMemo(() => products.length, [products]);
   const totalEvents = useMemo(() => events.length, [events]);
   const totalGalleryItems = useMemo(() => galleryItems.length, [galleryItems]);
+
+  async function loadQuoteRequests() {
+    setQuotesError("");
+    try {
+      const response = await fetch(buildApiUrl("/api/quotes?limit=200"), {
+        credentials: "include",
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to fetch quote requests");
+      }
+
+      setQuoteRequests(Array.isArray(data?.items) ? data.items : []);
+    } catch (error) {
+      setQuotesError(error.message || "Failed to load quote requests");
+    } finally {
+      setQuotesLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadQuoteRequests();
+  }, []);
+
+  async function handleQuoteStatusChange(quoteId, status) {
+    setActiveQuoteAction(`${quoteId}:${status}`);
+    setQuotesError("");
+
+    try {
+      const response = await fetch(buildApiUrl(`/api/quotes/${quoteId}/status`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          status,
+          adminNotes: status === "ACCEPTED" ? "Approved by admin" : "Rejected by admin",
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.item) {
+        throw new Error(data?.error || "Failed to update quote status");
+      }
+
+      setQuoteRequests((prev) => prev.map((item) => (item.id === quoteId ? data.item : item)));
+    } catch (error) {
+      setQuotesError(error.message || "Failed to update quote status");
+    } finally {
+      setActiveQuoteAction(null);
+    }
+  }
 
   function resetForm() {
     setName("");
@@ -119,8 +177,8 @@ export default function Admin() {
     resetForm();
   }
 
-  function handleSignOut() {
-    clearAdminSession();
+  async function handleSignOut() {
+    await logout();
     navigate("/signin");
   }
 
@@ -306,11 +364,91 @@ export default function Admin() {
         </div>
 
         <div className="mt-4 flex flex-wrap gap-3">
+          <a href="#admin-quotes" className="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Quotes</a>
           <a href="#admin-products" className="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Products</a>
           <a href="#admin-events" className="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Events</a>
           <a href="#admin-gallery" className="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Gallery</a>
           <a href="#admin-contact" className="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Contact</a>
           <a href="#admin-social" className="rounded-xl border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50">Social Links</a>
+        </div>
+
+        <div id="admin-quotes" className="mt-8 rounded-2xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-slate-900">Quote Requests</h2>
+            <button
+              onClick={loadQuoteRequests}
+              className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Refresh Quotes
+            </button>
+          </div>
+
+          {quotesError ? <p className="mt-4 text-sm font-medium text-rose-600">{quotesError}</p> : null}
+          {quotesLoading ? <p className="mt-4 text-sm text-slate-600">Loading quote requests...</p> : null}
+
+          {!quotesLoading && quoteRequests.length === 0 ? (
+            <p className="mt-4 text-sm text-slate-600">No quote requests found.</p>
+          ) : null}
+
+          <div className="mt-5 grid gap-4">
+            {quoteRequests.map((quote) => (
+              <article key={quote.id} className="rounded-xl border border-slate-200 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-base font-semibold text-slate-900">Quote #{quote.id}</h3>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    quote.status === "PENDING"
+                      ? "bg-amber-100 text-amber-700"
+                      : quote.status === "ACCEPTED"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-rose-100 text-rose-700"
+                  }`}>
+                    {quote.status}
+                  </span>
+                </div>
+
+                <div className="mt-3 grid gap-2 text-sm text-slate-700 md:grid-cols-2">
+                  <p><span className="font-semibold">Name:</span> {quote.customerName}</p>
+                  <p><span className="font-semibold">Phone:</span> {quote.phone}</p>
+                  <p><span className="font-semibold">Email:</span> {quote.email || "Not provided"}</p>
+                  <p><span className="font-semibold">Required Date:</span> {quote.requirementDate}</p>
+                  <p className="md:col-span-2"><span className="font-semibold">Location:</span> {quote.eventLocation || "Not provided"}</p>
+                  <p className="md:col-span-2"><span className="font-semibold">Notes:</span> {quote.notes || "None"}</p>
+                  <p><span className="font-semibold">Total:</span> ₹ {Number(quote.totalAmount || 0).toLocaleString("en-IN")}</p>
+                  <p><span className="font-semibold">Created:</span> {new Date(quote.createdAt).toLocaleString("en-IN")}</p>
+                </div>
+
+                <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
+                  <p className="font-semibold text-slate-900">Requested Items</p>
+                  <ul className="mt-2 space-y-1">
+                    {(quote.cartItems || []).map((item, index) => (
+                      <li key={`${quote.id}-${index}`}>
+                        {index + 1}. {item.name} x{item.qty} (₹ {Number(item.price || 0).toLocaleString("en-IN")})
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {quote.status === "PENDING" ? (
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      onClick={() => handleQuoteStatusChange(quote.id, "ACCEPTED")}
+                      disabled={activeQuoteAction === `${quote.id}:ACCEPTED`}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {activeQuoteAction === `${quote.id}:ACCEPTED` ? "Accepting..." : "Accept"}
+                    </button>
+                    <button
+                      onClick={() => handleQuoteStatusChange(quote.id, "REJECTED")}
+                      disabled={activeQuoteAction === `${quote.id}:REJECTED`}
+                      className="rounded-lg bg-rose-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {activeQuoteAction === `${quote.id}:REJECTED` ? "Rejecting..." : "Reject"}
+                    </button>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+          </div>
         </div>
 
         <div id="admin-products" className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">

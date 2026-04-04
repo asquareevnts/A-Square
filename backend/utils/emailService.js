@@ -36,7 +36,8 @@ const transporter = createTransport({
 */
 
 export async function sendPasswordResetEmail(email, resetToken, fullName) {
-  const resetLink = `http://localhost:5173/reset-password?token=${resetToken}`;
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const resetLink = `${frontendUrl.replace(/\/+$/, '')}/signin?resetToken=${resetToken}`;
   
   const mailOptions = {
     from: process.env.EMAIL_USER || 'noreply@asquareevents.com',
@@ -193,6 +194,11 @@ export async function sendPasswordResetEmail(email, resetToken, fullName) {
 }
 
 export async function verifyEmailConnection() {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('Email credentials not configured. Password reset emails will be disabled.');
+    return false;
+  }
+
   try {
     await getTransporter().verify();
     console.log('✅ Email service is ready');

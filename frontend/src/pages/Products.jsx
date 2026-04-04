@@ -4,7 +4,6 @@ import { FiShoppingCart, FiCheck, FiX } from "react-icons/fi";
 import { loadProducts } from "../data/productsStore";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { isAdminAuthenticated } from "../utils/adminAuth";
 
 export default function Products() {
   const [products, setProducts] = useState(() => loadProducts());
@@ -14,7 +13,7 @@ export default function Products() {
   const { addToCart } = useCart();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isSignedIn = Boolean(user) || isAdminAuthenticated();
+  const isSignedIn = Boolean(user);
 
   useEffect(() => {
     function refreshProducts() {

@@ -3,28 +3,19 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiX } from "react-icons/fi";
-import {
-  ADMIN_PASSWORD,
-  ADMIN_USERNAME,
-  clearAdminSession,
-  isAdminAuthenticated,
-  setAdminAuthenticated
-} from "../utils/adminAuth";
-import { loginLocalAccount } from "../data/localAuthStore";
 import { buildApiUrl } from "../config/api";
 
 export default function SignIn() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
-  const { login, logout } = useAuth();
+  const { login, user } = useAuth();
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const alreadyAuthed = isAdminAuthenticated();
 
   // Forgot password states
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -38,23 +29,24 @@ export default function SignIn() {
   const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
-    if (alreadyAuthed) {
-      navigate("/admin");
+    if (user) {
+      navigate(user.role === "admin" && redirectTo === "/" ? "/admin" : redirectTo);
     }
-  }, [alreadyAuthed, navigate]);
+  }, [navigate, redirectTo, user]);
+
+  useEffect(() => {
+    const urlResetToken = searchParams.get("resetToken");
+    if (urlResetToken) {
+      setShowForgotPassword(true);
+      setResetStep(2);
+      setResetToken(urlResetToken);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError("");
     setLoading(true);
-
-    if (identifier === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      await logout();
-      setAdminAuthenticated(true);
-      navigate("/admin");
-      setLoading(false);
-      return;
-    }
 
     try {
       const response = await fetch(buildApiUrl("/auth/login"), {
@@ -67,21 +59,13 @@ export default function SignIn() {
       const data = await response.json();
 
       if (data.success) {
-        clearAdminSession();
         login(data.user);
-        navigate(redirectTo);
+        navigate(data.user?.role === "admin" && redirectTo === "/" ? "/admin" : redirectTo);
       } else {
         setError(data.message || "Login failed");
       }
     } catch (err) {
-      const localResult = loginLocalAccount({ identifier, password });
-      if (localResult.success) {
-        clearAdminSession();
-        login(localResult.user);
-        navigate(redirectTo);
-      } else {
-        setError("Unable to connect to server. Please try again.");
-      }
+      setError("Unable to connect to server. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -273,7 +257,6 @@ export default function SignIn() {
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-slate-500">Admin login: admin / admin@123</p>
         </div>
 
         <p className="mt-6 text-center text-sm text-slate-600">

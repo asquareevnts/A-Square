@@ -5,10 +5,10 @@ const STORAGE_KEY = "event-platform-contact";
 export const defaultContactInfo = {
   heading: "Contact Us",
   description: "Share your event requirements and our team will reach out with a tailored plan.",
-  email: "hello@asquareevents.com",
-  phone: "+91 90000 00000",
-  location: "Hyderabad, India",
-  address: "Hitech City, Hyderabad, Telangana 500081"
+  email: "asquareevents99@gmail.com",
+  phone: "+91 9985830114",
+  location: "Nijampet, Kukatpally, Hyderabad",
+  address: "Nijampet, Kukatpally, Hyderabad - 500090"
 };
 
 function readLocalContactInfo() {

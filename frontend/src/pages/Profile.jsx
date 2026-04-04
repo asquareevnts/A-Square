@@ -1,68 +1,86 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { clearAdminSession, isAdminAuthenticated } from "../utils/adminAuth";
-import { loadProfileDetails, saveProfileDetails } from "../data/profileStore";
+import { buildApiUrl } from "../config/api";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { logout, user } = useAuth();
-  const isAdmin = isAdminAuthenticated() && !user;
-  const isSignedIn = Boolean(user) || isAdmin;
-
-  const identityKey = useMemo(() => {
-    if (user?.email) {
-      return user.email;
-    }
-    if (isAdmin) {
-      return "admin";
-    }
-    return "guest";
-  }, [isAdmin, user]);
-
-  const defaultProfile = useMemo(
-    () => ({
-      fullName: user?.fullName || user?.name || (isAdmin ? "Admin User" : ""),
-      email: user?.email || (isAdmin ? "admin@asquareevents.com" : ""),
-      phone: user?.phone || "",
-      address: user?.address || ""
-    }),
-    [isAdmin, user]
-  );
-
-  const [profile, setProfile] = useState(() => loadProfileDetails(identityKey, defaultProfile));
+  const { login, logout, user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const [profile, setProfile] = useState(() => ({
+    fullName: user?.fullName || user?.name || "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    address: user?.address || ""
+  }));
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!isSignedIn) {
+    if (!user) {
       navigate("/signin");
       return;
     }
 
-    setProfile(loadProfileDetails(identityKey, defaultProfile));
-  }, [defaultProfile, identityKey, isSignedIn, navigate]);
+    setProfile({
+      fullName: user.fullName || user.name || "",
+      email: user.email || "",
+      phone: user.phone || "",
+      address: user.address || ""
+    });
+  }, [navigate, user]);
 
   function handleChange(key, value) {
     setSaved(false);
+    setError("");
     setProfile((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSave(event) {
+  async function handleSave(event) {
     event.preventDefault();
-    saveProfileDetails(identityKey, profile);
-    setSaved(true);
+    setSaving(true);
+    setSaved(false);
+    setError("");
+
+    try {
+      const response = await fetch(buildApiUrl("/auth/me"), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          fullName: profile.fullName,
+          phone: profile.phone,
+          address: profile.address
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data?.user) {
+        throw new Error(data?.message || "Failed to update profile");
+      }
+
+      login(data.user);
+      setProfile({
+        fullName: data.user.fullName || "",
+        email: data.user.email || "",
+        phone: data.user.phone || "",
+        address: data.user.address || ""
+      });
+      setSaved(true);
+    } catch (saveError) {
+      setError(saveError.message || "Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSignOut() {
-    if (user) {
-      await logout();
-    }
-
-    clearAdminSession();
+    await logout();
     navigate("/signin");
   }
 
-  if (!isSignedIn) {
+  if (!user) {
     return null;
   }
 
@@ -87,8 +105,8 @@ export default function Profile() {
             <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
             <input
               value={profile.email || ""}
-              onChange={(event) => handleChange("email", event.target.value)}
-              className="w-full rounded-xl border border-slate-300 px-4 py-3 outline-none transition focus:border-indigo-500"
+              readOnly
+              className="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-500 outline-none"
               placeholder="you@example.com"
             />
           </div>
@@ -115,8 +133,11 @@ export default function Profile() {
 
           <div className="sm:col-span-2">
             <div className="flex flex-wrap gap-3">
-              <button className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">
-                Save Profile
+              <button
+                disabled={saving}
+                className="rounded-xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving..." : "Save Profile"}
               </button>
               {isAdmin ? (
                 <button
@@ -135,6 +156,7 @@ export default function Profile() {
                 Sign Out
               </button>
             </div>
+            {error ? <p className="mt-3 text-sm text-rose-600">{error}</p> : null}
             {saved ? <p className="mt-3 text-sm text-emerald-600">Profile saved successfully.</p> : null}
           </div>
         </form>

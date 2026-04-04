@@ -3,8 +3,6 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 import { FiMail, FiLock, FiUser, FiPhone, FiEye, FiEyeOff } from "react-icons/fi";
-import { clearAdminSession } from "../utils/adminAuth";
-import { registerLocalAccount } from "../data/localAuthStore";
 import { buildApiUrl } from "../config/api";
 
 export default function SignUp() {
@@ -87,27 +85,13 @@ export default function SignUp() {
       const data = await response.json();
 
       if (data.success) {
-        clearAdminSession();
         login(data.user);
-        navigate(redirectTo);
+        navigate(data.user?.role === "admin" && redirectTo === "/" ? "/admin" : redirectTo);
       } else {
         setError(data.message || "Registration failed");
       }
     } catch (err) {
-      const localResult = registerLocalAccount({
-        fullName: formData.fullName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password
-      });
-
-      if (localResult.success) {
-        clearAdminSession();
-        login(localResult.user);
-        navigate(redirectTo);
-      } else {
-        setError(localResult.message || "Unable to create account right now.");
-      }
+      setError("Unable to create account right now.");
     } finally {
       setLoading(false);
     }
@@ -312,10 +296,7 @@ export default function SignUp() {
 
           {/* Terms */}
           <p className="mt-4 text-xs text-center text-slate-500">
-            By signing up, you agree to our{" "}
-            <Link to="/terms" className="text-indigo-600 hover:underline">Terms of Service</Link>
-            {" "}and{" "}
-            <Link to="/privacy" className="text-indigo-600 hover:underline">Privacy Policy</Link>
+            By signing up, you agree to the service terms and privacy policy shared by ASquare Events.
           </p>
         </div>
 

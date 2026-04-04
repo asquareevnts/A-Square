@@ -5,7 +5,6 @@ import { FiShoppingBag, FiStar, FiTruck, FiShield, FiRefreshCw, FiShoppingCart }
 import { loadProducts } from "../data/productsStore";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { isAdminAuthenticated } from "../utils/adminAuth";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -16,10 +15,9 @@ export default function Home() {
   const navigate = useNavigate();
   const [products, setProducts] = useState(() => loadProducts().slice(0, 3));
   const [addedIds, setAddedIds] = useState(new Set());
-  const [showSignIn, setShowSignIn] = useState(false);
   const { addToCart } = useCart();
   const { user } = useAuth();
-  const isSignedIn = Boolean(user) || isAdminAuthenticated();
+  const isSignedIn = Boolean(user);
 
   useEffect(() => {
     function refresh() { setProducts(loadProducts().slice(0, 3)); }
@@ -40,7 +38,7 @@ export default function Home() {
 
   const trustItems = [
     { icon: FiTruck,     title: "Fast Delivery",      desc: "Quick dispatch for all event orders" },
-    { icon: FiShield,    title: "Secure Payments",     desc: "Razorpay-powered safe checkout" },
+    { icon: FiShield,    title: "Transparent Quotes",  desc: "Get pricing confirmation from our team" },
     { icon: FiStar,      title: "Premium Quality",     desc: "Curated for memorable experiences" },
     { icon: FiRefreshCw, title: "Easy Returns",        desc: "Hassle-free 7-day return policy" },
   ];
@@ -201,7 +199,7 @@ export default function Home() {
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {[
               { title: "Curated Collections",    text: "Every product is hand-picked for quality and event suitability — nothing generic, ever." },
-              { title: "One-Click Checkout",     text: "Seamless Razorpay-powered payments. UPI, cards, netbanking — all accepted." },
+              { title: "Quick Quote Requests",   text: "Add products to cart, share requirement date, and receive admin confirmation fast." },
               { title: "Event Expert Support",   text: "Our team understands events. Get guidance before you book or buy." },
             ].map((item, i) => (
               <motion.article
