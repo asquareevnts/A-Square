@@ -5,6 +5,21 @@ const { Pool } = pkg;
 
 let pool;
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function getDatabaseTarget() {
+  try {
+    const parsedUrl = new URL(String(process.env.DATABASE_URL || ''));
+    return `${parsedUrl.hostname}:${parsedUrl.port || '5432'}`;
+  } catch {
+    return 'unknown-host';
+  }
+}
+
 function getSslConfig() {
   const databaseUrl = String(process.env.DATABASE_URL || '');
   const sslMode = String(process.env.PGSSLMODE || '').toLowerCase();
@@ -178,9 +193,29 @@ export async function initDatabase() {
     throw new Error('DATABASE_URL is required. Configure PostgreSQL before starting the backend.');
   }
 
-  await ensureSchema();
-  await ensureAdminUser();
-  console.log('PostgreSQL schema initialized successfully');
+  const maxAttempts = Math.max(Number(process.env.DB_INIT_MAX_RETRIES || 12), 1);
+  const retryDelayMs = Math.max(Number(process.env.DB_INIT_RETRY_DELAY_MS || 5000), 500);
+  const target = getDatabaseTarget();
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await ensureSchema();
+      await ensureAdminUser();
+      console.log(`PostgreSQL schema initialized successfully (${target})`);
+      return;
+    } catch (error) {
+      const canRetry = attempt < maxAttempts && ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT'].includes(error?.code);
+
+      if (!canRetry) {
+        throw error;
+      }
+
+      console.warn(
+        `PostgreSQL init attempt ${attempt}/${maxAttempts} failed (${error.code}) for ${target}. Retrying in ${retryDelayMs}ms...`
+      );
+      await wait(retryDelayMs);
+    }
+  }
 }
 
 export async function getContentByKey(key) {
