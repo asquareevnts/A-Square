@@ -121,6 +121,18 @@ async function ensureSchema() {
   `);
 
   await database.query(`
+    CREATE TABLE IF NOT EXISTS phone_login_tokens (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      phone TEXT NOT NULL,
+      token_hash TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL,
+      consumed_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await database.query(`
     CREATE TABLE IF NOT EXISTS content_store (
       key TEXT PRIMARY KEY,
       value JSONB NOT NULL,
@@ -353,6 +365,31 @@ export async function getUserById(id) {
   return mapUser(rows[0]);
 }
 
+export async function getUserByPhone(phoneDigits) {
+  const cleanedDigits = String(phoneDigits || '').replace(/\D/g, '');
+  const localTen = cleanedDigits.length > 10 ? cleanedDigits.slice(-10) : cleanedDigits;
+
+  if (!localTen) {
+    return null;
+  }
+
+  const { rows } = await getPool().query(
+    `
+      SELECT *
+      FROM users
+      WHERE regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') IN ($1, $2)
+      ORDER BY CASE
+        WHEN regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = $1 THEN 0
+        ELSE 1
+      END
+      LIMIT 1
+    `,
+    [cleanedDigits, localTen]
+  );
+
+  return mapUser(rows[0]);
+}
+
 export async function verifyPassword(plainPassword, hashedPassword) {
   if (!plainPassword || !hashedPassword) {
     return false;
@@ -470,6 +507,44 @@ export async function createPasswordResetToken(userId, token, expiresInMinutes =
   );
 
   return token;
+}
+
+export async function createPhoneLoginToken(userId, phone, tokenHash, expiresInMinutes = 10) {
+  const database = getPool();
+  await database.query('DELETE FROM phone_login_tokens WHERE user_id = $1 OR phone = $2', [userId, phone]);
+  await database.query(
+    `
+      INSERT INTO phone_login_tokens (user_id, phone, token_hash, expires_at)
+      VALUES ($1, $2, $3, NOW() + ($4 || ' minutes')::interval)
+    `,
+    [userId, phone, tokenHash, String(expiresInMinutes)]
+  );
+}
+
+export async function consumePhoneLoginToken(phoneDigits, tokenHash) {
+  const cleanedDigits = String(phoneDigits || '').replace(/\D/g, '');
+  const localTen = cleanedDigits.length > 10 ? cleanedDigits.slice(-10) : cleanedDigits;
+
+  const { rows } = await getPool().query(
+    `
+      UPDATE phone_login_tokens plt
+      SET consumed_at = NOW()
+      WHERE plt.id = (
+        SELECT id
+        FROM phone_login_tokens
+        WHERE token_hash = $1
+          AND consumed_at IS NULL
+          AND expires_at > NOW()
+          AND regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') IN ($2, $3)
+        ORDER BY created_at DESC
+        LIMIT 1
+      )
+      RETURNING plt.user_id
+    `,
+    [tokenHash, cleanedDigits, localTen]
+  );
+
+  return rows[0]?.user_id || null;
 }
 
 export async function verifyPasswordResetToken(token) {

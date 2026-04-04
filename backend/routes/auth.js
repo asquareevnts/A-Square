@@ -4,11 +4,15 @@ import crypto from 'crypto';
 import {
   createUser,
   getUserByEmail,
+  getUserById,
+  getUserByPhone,
   verifyPassword,
   updateLastLogin,
   updateUserProfile,
   getUserStats,
   createPasswordResetToken,
+  createPhoneLoginToken,
+  consumePhoneLoginToken,
   verifyPasswordResetToken,
   deletePasswordResetToken,
   updateUserPassword
@@ -30,6 +34,64 @@ function serializeUser(user) {
     role: user.role,
     emailVerified: user.email_verified,
   };
+}
+
+function normalizePhone(phone) {
+  return String(phone || '').replace(/\D/g, '');
+}
+
+function toE164(phoneDigits) {
+  const digits = normalizePhone(phoneDigits);
+  const defaultCountryCode = String(process.env.OTP_DEFAULT_COUNTRY_CODE || '91').replace(/\D/g, '') || '91';
+
+  if (digits.startsWith('00')) {
+    return `+${digits.slice(2)}`;
+  }
+
+  if (digits.length === 10) {
+    return `+${defaultCountryCode}${digits}`;
+  }
+
+  return `+${digits}`;
+}
+
+function getOtpHash(phoneDigits, otp) {
+  const secret = String(process.env.OTP_SECRET || process.env.SESSION_SECRET || 'otp-secret');
+  return crypto.createHash('sha256').update(`${phoneDigits}:${otp}:${secret}`).digest('hex');
+}
+
+async function sendPhoneOtp(phoneDigits, otp) {
+  const accountSid = String(process.env.TWILIO_ACCOUNT_SID || '').trim();
+  const authToken = String(process.env.TWILIO_AUTH_TOKEN || '').trim();
+  const fromNumber = String(process.env.TWILIO_FROM_NUMBER || '').trim();
+  const toNumber = toE164(phoneDigits);
+
+  if (!accountSid || !authToken || !fromNumber) {
+    return { success: false, skipped: true, reason: 'Twilio SMS config missing' };
+  }
+
+  const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
+  const body = new URLSearchParams({
+    To: toNumber,
+    From: fromNumber,
+    Body: `Your ASquare Events login OTP is ${otp}. It expires in 10 minutes.`,
+  });
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}));
+    return { success: false, skipped: false, reason: errorBody?.message || 'Failed to send OTP SMS' };
+  }
+
+  return { success: true, skipped: false };
 }
 
 // Local Registration
@@ -159,6 +221,83 @@ router.post('/login', async (req, res) => {
       success: false, 
       message: 'Login failed. Please try again.' 
     });
+  }
+});
+
+router.post('/request-phone-otp', async (req, res) => {
+  try {
+    const phoneDigits = normalizePhone(req.body?.phone);
+    if (phoneDigits.length < 10) {
+      return res.status(400).json({ success: false, message: 'Valid phone number is required' });
+    }
+
+    const user = await getUserByPhone(phoneDigits);
+    if (!user) {
+      return res.json({
+        success: true,
+        message: 'If an account exists with this phone number, an OTP has been sent.'
+      });
+    }
+
+    const otp = crypto.randomInt(100000, 999999).toString();
+    const tokenHash = getOtpHash(phoneDigits, otp);
+    await createPhoneLoginToken(user.id, phoneDigits, tokenHash, 10);
+
+    if (process.env.NODE_ENV !== 'production') {
+      return res.json({
+        success: true,
+        message: 'Use this OTP to continue login:',
+        otp,
+      });
+    }
+
+    const sendResult = await sendPhoneOtp(phoneDigits, otp);
+    if (!sendResult.success) {
+      return res.status(500).json({ success: false, message: 'Failed to send OTP. Please try again.' });
+    }
+
+    return res.json({ success: true, message: 'OTP sent successfully' });
+  } catch (error) {
+    console.error('Request phone OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to process OTP request' });
+  }
+});
+
+router.post('/verify-phone-otp', async (req, res) => {
+  try {
+    const phoneDigits = normalizePhone(req.body?.phone);
+    const otp = String(req.body?.otp || '').replace(/\D/g, '').slice(0, 6);
+
+    if (phoneDigits.length < 10 || otp.length !== 6) {
+      return res.status(400).json({ success: false, message: 'Phone number and 6-digit OTP are required' });
+    }
+
+    const tokenHash = getOtpHash(phoneDigits, otp);
+    const userId = await consumePhoneLoginToken(phoneDigits, tokenHash);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    const user = await getUserById(userId);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired OTP' });
+    }
+
+    await updateLastLogin(user.id);
+    req.login(user, (err) => {
+      if (err) {
+        return res.status(500).json({ success: false, message: 'Login failed' });
+      }
+
+      return res.json({
+        success: true,
+        message: 'Login successful',
+        user: serializeUser(user)
+      });
+    });
+  } catch (error) {
+    console.error('Verify phone OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
   }
 });
 

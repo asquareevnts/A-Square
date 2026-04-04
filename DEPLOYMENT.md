@@ -26,6 +26,13 @@ GOOGLE_CALLBACK_URL=https://your-backend-domain/auth/google/callback
 EMAIL_USER=your-email@gmail.com
 EMAIL_PASSWORD=your-app-password
 
+# OTP login (SMS via Twilio)
+OTP_SECRET=replace-this-otp-secret
+OTP_DEFAULT_COUNTRY_CODE=91
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_FROM_NUMBER=+1XXXXXXXXXX
+
 ADMIN_WHATSAPP_NUMBER=919876543210
 WHATSAPP_CLOUD_ACCESS_TOKEN=
 WHATSAPP_CLOUD_PHONE_NUMBER_ID=
@@ -46,4 +53,4 @@ WHATSAPP_SEND_CUSTOMER_ACK=true
 - The backend now requires PostgreSQL. SQLite is no longer supported.
 - Admin access is server-enforced through the seeded admin user configured by `ADMIN_EMAIL` and `ADMIN_PASSWORD`.
 - Content management and quote review endpoints require an authenticated admin session.
-- Password reset emails and WhatsApp notifications are optional integrations, but the environment variables must be configured if those flows are expected to work in production.
+- Password reset emails, SMS OTP (Twilio), and WhatsApp notifications are optional integrations, but the environment variables must be configured if those flows are expected to work in production.
