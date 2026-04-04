@@ -36,6 +36,7 @@ export default function Admin() {
   const [quotesLoading, setQuotesLoading] = useState(true);
   const [quotesError, setQuotesError] = useState("");
   const [activeQuoteAction, setActiveQuoteAction] = useState(null);
+  const [productSyncNotice, setProductSyncNotice] = useState("");
 
   const totalProducts = useMemo(() => products.length, [products]);
   const totalEvents = useMemo(() => events.length, [events]);
@@ -115,7 +116,7 @@ export default function Admin() {
     reader.readAsDataURL(file);
   }
 
-  function handleSubmitProduct(event) {
+  async function handleSubmitProduct(event) {
     event.preventDefault();
 
     const cleanedName = name.trim();
@@ -150,7 +151,8 @@ export default function Admin() {
     }
 
     setProducts(nextProducts);
-    saveProducts(nextProducts);
+    const result = await saveProducts(nextProducts);
+    setProductSyncNotice(result?.success ? "Products synced for all users." : result?.message || "Product sync failed.");
     resetForm();
   }
 
@@ -161,19 +163,21 @@ export default function Admin() {
     setImage(product.image);
   }
 
-  function handleDeleteProduct(id) {
+  async function handleDeleteProduct(id) {
     const nextProducts = products.filter((product) => product.id !== id);
     setProducts(nextProducts);
-    saveProducts(nextProducts);
+    const result = await saveProducts(nextProducts);
+    setProductSyncNotice(result?.success ? "Products synced for all users." : result?.message || "Product sync failed.");
 
     if (editingId === id) {
       resetForm();
     }
   }
 
-  function handleResetProducts() {
+  async function handleResetProducts() {
     setProducts(defaultProducts);
-    saveProducts(defaultProducts);
+    const result = await saveProducts(defaultProducts);
+    setProductSyncNotice(result?.success ? "Products synced for all users." : result?.message || "Product sync failed.");
     resetForm();
   }
 
@@ -454,6 +458,9 @@ export default function Admin() {
         <div id="admin-products" className="mt-8 grid gap-6 lg:grid-cols-[380px_1fr]">
           <div className="rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h2 className="text-xl font-semibold text-slate-900">{editingId ? "Edit Product" : "Add Product"}</h2>
+            {productSyncNotice ? (
+              <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{productSyncNotice}</p>
+            ) : null}
             <form onSubmit={handleSubmitProduct} className="mt-5 space-y-4">
               <div>
                 <label className="mb-2 block text-sm font-medium text-slate-700">Product Name</label>

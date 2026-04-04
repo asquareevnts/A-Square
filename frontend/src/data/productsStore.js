@@ -80,16 +80,29 @@ export function loadProducts() {
   return localProducts;
 }
 
-export function saveProducts(products) {
+export async function saveProducts(products) {
   const normalized = normalizeProducts(products || []);
   writeLocalProducts(normalized);
 
-  void fetch(buildApiUrl("/api/content/products"), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ items: normalized })
-  }).catch(() => {
-    // Keep local fallback silently
-  });
+  try {
+    const response = await fetch(buildApiUrl("/api/content/products"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ items: normalized })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      const errorMessage = data?.message || `Failed to sync products (${response.status})`;
+      return { success: false, message: errorMessage };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    const serverItems = Array.isArray(data?.items) ? normalizeProducts(data.items) : normalized;
+    writeLocalProducts(serverItems);
+    return { success: true };
+  } catch {
+    return { success: false, message: "Unable to reach server. Product saved only on this device." };
+  }
 }
