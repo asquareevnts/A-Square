@@ -143,9 +143,9 @@ export default function Profile() {
                 <button
                   type="button"
                   onClick={() => navigate("/admin")}
-                  className="rounded-xl border border-indigo-300 px-5 py-3 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-50"
+                  className="rounded-xl bg-indigo-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-700"
                 >
-                  Go to Admin Dashboard
+                  ⚙ Admin Dashboard
                 </button>
               ) : null}
               <button

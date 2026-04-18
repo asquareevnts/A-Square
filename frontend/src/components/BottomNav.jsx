@@ -1,10 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { FaBoxOpen, FaCalendarAlt, FaHome, FaImages, FaShoppingCart } from "react-icons/fa";
+import { FaBoxOpen, FaCalendarAlt, FaHome, FaImages, FaShoppingCart, FaTachometerAlt } from "react-icons/fa";
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 
 export default function BottomNav() {
   const location = useLocation();
   const { totalItems } = useCart();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
 
   const navItem = (path, icon, label) => (
     <Link
@@ -25,7 +28,10 @@ export default function BottomNav() {
         {navItem("/", <FaHome size={18} />, "Home")}
         {navItem("/events", <FaCalendarAlt size={18} />, "Events")}
         {navItem("/products", <FaBoxOpen size={18} />, "Products")}
-        {navItem("/gallery", <FaImages size={18} />, "Gallery")}
+        {isAdmin
+          ? navItem("/admin", <FaTachometerAlt size={18} />, "Dashboard")
+          : navItem("/gallery", <FaImages size={18} />, "Gallery")
+        }
         <Link
           to="/cart"
           className={`relative flex min-w-[56px] flex-col items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium ${
