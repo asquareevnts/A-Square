@@ -55,14 +55,19 @@ export function AuthProvider({ children }) {
         }
       }
 
-      setUser(null);
-      writeStoredUser(null);
-      return null;
+      // Server explicitly rejected the session — clear auth state
+      if (response.status === 401 || response.status === 403) {
+        setUser(null);
+        writeStoredUser(null);
+        return null;
+      }
+
+      // Server error (5xx) or unexpected response — keep existing stored user
+      return readStoredUser();
     } catch (error) {
+      // Network error (backend cold-starting, offline) — keep stored user, don't log out
       console.error('Auth check failed:', error);
-      setUser(null);
-      writeStoredUser(null);
-      return null;
+      return readStoredUser();
     } finally {
       setLoading(false);
     }
