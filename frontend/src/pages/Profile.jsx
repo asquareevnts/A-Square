@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FiSettings } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { buildApiUrl } from "../config/api";
 
@@ -161,6 +162,19 @@ export default function Profile() {
           </div>
         </form>
       </div>
+
+      {isAdmin ? (
+        <div className="mx-auto mt-4 max-w-3xl">
+          <button
+            type="button"
+            onClick={() => navigate("/admin")}
+            className="flex w-full items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-6 py-4 text-base font-semibold text-white shadow-md transition hover:bg-indigo-700 active:scale-95"
+          >
+            <FiSettings size={20} />
+            Go to Admin Dashboard
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }
