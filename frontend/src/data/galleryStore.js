@@ -30,7 +30,7 @@ function readLocalGalleryItems() {
     }
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length ? normalizeGallery(parsed) : defaultGalleryItems;
+    return Array.isArray(parsed) ? normalizeGallery(parsed) : defaultGalleryItems;
   } catch {
     return defaultGalleryItems;
   }
@@ -60,7 +60,7 @@ async function syncGalleryFromServer() {
     }
 
     const data = await response.json();
-    const items = Array.isArray(data?.items) && data.items.length
+    const items = Array.isArray(data?.items)
       ? normalizeGallery(data.items)
       : readLocalGalleryItems();
 
@@ -76,16 +76,28 @@ export function loadGalleryItems() {
   return localItems;
 }
 
-export function saveGalleryItems(items) {
+export async function saveGalleryItems(items) {
   const normalized = normalizeGallery(items || []);
   writeLocalGalleryItems(normalized);
 
-  void fetch(buildApiUrl("/api/content/gallery"), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ items: normalized })
-  }).catch(() => {
-    // Keep local fallback silently
-  });
+  try {
+    const response = await fetch(buildApiUrl("/api/content/gallery"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ items: normalized })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { success: false, message: data?.message || `Failed to sync gallery (${response.status})` };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    const serverItems = Array.isArray(data?.items) ? normalizeGallery(data.items) : normalized;
+    writeLocalGalleryItems(serverItems);
+    return { success: true };
+  } catch {
+    return { success: false, message: "Unable to reach server. Gallery saved only on this device." };
+  }
 }

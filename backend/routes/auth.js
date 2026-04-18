@@ -21,6 +21,45 @@ import { requireAdmin, requireAuthenticated } from '../middleware/auth.js';
 import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 const router = express.Router();
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+function parseOriginList(value) {
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getAllowedFrontendOrigins() {
+  return [
+    ...parseOriginList(process.env.CORS_ALLOWED_ORIGINS),
+    ...parseOriginList(process.env.FRONTEND_URL),
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:5174',
+    'http://127.0.0.1:5174'
+  ];
+}
+
+function getSafeFrontendUrl(rawUrl) {
+  const defaultFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const allowedOrigins = getAllowedFrontendOrigins();
+
+  try {
+    const candidateOrigin = new URL(String(rawUrl || '')).origin;
+    if (allowedOrigins.includes(candidateOrigin)) {
+      return candidateOrigin;
+    }
+
+    if (!IS_PRODUCTION) {
+      return candidateOrigin;
+    }
+  } catch {
+    // Fall back to configured frontend URL.
+  }
+
+  return defaultFrontendUrl;
+}
 
 function serializeUser(user) {
   return {
@@ -303,47 +342,66 @@ router.post('/verify-phone-otp', async (req, res) => {
 
 // Google OAuth
 router.get('/google', (req, res, next) => {
+  if (!req.app.get('googleAuthEnabled')) {
+    return res.status(503).json({ success: false, message: 'Google authentication is not configured' });
+  }
+
   const origin = req.get('origin');
   const referer = req.get('referer');
 
   if (origin) {
-    req.session.frontendUrl = origin;
+    req.session.frontendUrl = getSafeFrontendUrl(origin);
   } else if (referer) {
-    try {
-      req.session.frontendUrl = new URL(referer).origin;
-    } catch {
-      req.session.frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    }
+    req.session.frontendUrl = getSafeFrontendUrl(referer);
   }
 
   next();
 }, passport.authenticate('google', { scope: ['profile', 'email'] }));
 
-router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/signin' }),
-  (req, res) => {
-    const frontendUrl = req.session?.frontendUrl || process.env.FRONTEND_URL || 'http://localhost:5173';
+router.get('/google/callback', (req, res, next) => {
+  if (!req.app.get('googleAuthEnabled')) {
+    return res.status(503).json({ success: false, message: 'Google authentication is not configured' });
+  }
+
+  passport.authenticate('google', (authError, user, info) => {
+    const frontendUrl = getSafeFrontendUrl(req.session?.frontendUrl);
     if (req.session) {
       delete req.session.frontendUrl;
     }
 
-    // Encode user data in URL so frontend can pick it up
-    // (avoids cross-domain cookie issues)
-    const userData = {
-      id: req.user.id,
-      email: req.user.email,
-      fullName: req.user.full_name,
-      phone: req.user.phone,
-      address: req.user.address,
-      profilePicture: req.user.profile_picture,
-      provider: req.user.provider,
-      role: req.user.role,
-      emailVerified: req.user.email_verified,
-    };
-    const encoded = Buffer.from(JSON.stringify(userData)).toString('base64url');
-    res.redirect(`${frontendUrl}/?authUser=${encoded}`);
-  }
-);
+    if (authError || !user) {
+      console.error('Google OAuth callback failed:', authError || info);
+      const errorMessage = encodeURIComponent(info?.message || 'google_auth_failed');
+      return res.redirect(`${frontendUrl}/signin?error=${errorMessage}`);
+    }
+
+    req.login(user, (loginError) => {
+      if (loginError) {
+        console.error('Google OAuth session login failed:', loginError);
+        const errorMessage = encodeURIComponent('google_session_failed');
+        return res.redirect(`${frontendUrl}/signin?error=${errorMessage}`);
+      }
+
+      // Encode user data in URL so frontend can pick it up
+      // (avoids cross-domain cookie issues)
+      const userData = {
+        id: req.user.id,
+        email: req.user.email,
+        fullName: req.user.full_name,
+        phone: req.user.phone,
+        address: req.user.address,
+        profilePicture: req.user.profile_picture,
+        provider: req.user.provider,
+        role: req.user.role,
+        emailVerified: req.user.email_verified,
+      };
+      const encoded = Buffer.from(JSON.stringify(userData)).toString('base64url');
+      return res.redirect(`${frontendUrl}/?authUser=${encoded}`);
+    });
+
+    return undefined;
+  })(req, res, next);
+});
 
 // Logout
 router.post('/logout', (req, res) => {

@@ -58,7 +58,7 @@ async function syncContactFromServer() {
     const data = await response.json();
     const info = {
       ...defaultContactInfo,
-      ...(data?.info || readLocalContactInfo())
+      ...((data?.info && typeof data.info === "object") ? data.info : readLocalContactInfo())
     };
     writeLocalContactInfo(info);
   } catch {
@@ -72,7 +72,7 @@ export function loadContactInfo() {
   return localInfo;
 }
 
-export function saveContactInfo(info) {
+export async function saveContactInfo(info) {
   const mergedInfo = {
     ...defaultContactInfo,
     ...(info || {})
@@ -80,12 +80,27 @@ export function saveContactInfo(info) {
 
   writeLocalContactInfo(mergedInfo);
 
-  void fetch(buildApiUrl("/api/content/contact"), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ info: mergedInfo })
-  }).catch(() => {
-    // Keep local fallback silently
-  });
+  try {
+    const response = await fetch(buildApiUrl("/api/content/contact"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ info: mergedInfo })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { success: false, message: data?.message || `Failed to sync contact info (${response.status})` };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    const serverInfo = {
+      ...defaultContactInfo,
+      ...((data?.info && typeof data.info === "object") ? data.info : mergedInfo)
+    };
+    writeLocalContactInfo(serverInfo);
+    return { success: true };
+  } catch {
+    return { success: false, message: "Unable to reach server. Contact info saved only on this device." };
+  }
 }

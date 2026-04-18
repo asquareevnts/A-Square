@@ -53,7 +53,7 @@ function readLocalEvents() {
     }
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length ? normalizeEvents(parsed) : defaultEvents;
+    return Array.isArray(parsed) ? normalizeEvents(parsed) : defaultEvents;
   } catch {
     return defaultEvents;
   }
@@ -83,7 +83,7 @@ async function syncEventsFromServer() {
     }
 
     const data = await response.json();
-    const items = Array.isArray(data?.items) && data.items.length
+    const items = Array.isArray(data?.items)
       ? normalizeEvents(data.items)
       : readLocalEvents();
 
@@ -99,16 +99,28 @@ export function loadEvents() {
   return localEvents;
 }
 
-export function saveEvents(events) {
+export async function saveEvents(events) {
   const normalized = normalizeEvents(events || []);
   writeLocalEvents(normalized);
 
-  void fetch(buildApiUrl("/api/content/events"), {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({ items: normalized })
-  }).catch(() => {
-    // Keep local fallback silently
-  });
+  try {
+    const response = await fetch(buildApiUrl("/api/content/events"), {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ items: normalized })
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      return { success: false, message: data?.message || `Failed to sync events (${response.status})` };
+    }
+
+    const data = await response.json().catch(() => ({}));
+    const serverItems = Array.isArray(data?.items) ? normalizeEvents(data.items) : normalized;
+    writeLocalEvents(serverItems);
+    return { success: true };
+  } catch {
+    return { success: false, message: "Unable to reach server. Event saved only on this device." };
+  }
 }

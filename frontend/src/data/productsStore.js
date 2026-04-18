@@ -34,7 +34,7 @@ function readLocalProducts() {
     }
 
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length ? normalizeProducts(parsed) : defaultProducts;
+    return Array.isArray(parsed) ? normalizeProducts(parsed) : defaultProducts;
   } catch {
     return defaultProducts;
   }
@@ -64,7 +64,7 @@ async function syncProductsFromServer() {
     }
 
     const data = await response.json();
-    const items = Array.isArray(data?.items) && data.items.length
+    const items = Array.isArray(data?.items)
       ? normalizeProducts(data.items)
       : readLocalProducts();
 

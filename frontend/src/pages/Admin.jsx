@@ -210,7 +210,7 @@ export default function Admin() {
     reader.readAsDataURL(file);
   }
 
-  function handleSubmitEvent(event) {
+  async function handleSubmitEvent(event) {
     event.preventDefault();
 
     const payload = {
@@ -227,7 +227,8 @@ export default function Admin() {
       : [...events, payload];
 
     setEvents(nextEvents);
-    saveEvents(nextEvents);
+    const result = await saveEvents(nextEvents);
+    setProductSyncNotice(result?.success ? "Events synced for all users." : result?.message || "Event sync failed.");
     resetEventForm();
   }
 
@@ -240,18 +241,20 @@ export default function Admin() {
     setEventDescription(item.description);
   }
 
-  function handleDeleteEvent(id) {
+  async function handleDeleteEvent(id) {
     const nextEvents = events.filter((item) => item.id !== id);
     setEvents(nextEvents);
-    saveEvents(nextEvents);
+    const result = await saveEvents(nextEvents);
+    setProductSyncNotice(result?.success ? "Events synced for all users." : result?.message || "Event sync failed.");
     if (eventId === id) {
       resetEventForm();
     }
   }
 
-  function handleResetEvents() {
+  async function handleResetEvents() {
     setEvents(defaultEvents);
-    saveEvents(defaultEvents);
+    const result = await saveEvents(defaultEvents);
+    setProductSyncNotice(result?.success ? "Events synced for all users." : result?.message || "Event sync failed.");
     resetEventForm();
   }
 
@@ -276,7 +279,7 @@ export default function Admin() {
     reader.readAsDataURL(file);
   }
 
-  function handleSubmitGalleryItem(event) {
+  async function handleSubmitGalleryItem(event) {
     event.preventDefault();
 
     const payload = {
@@ -290,7 +293,8 @@ export default function Admin() {
       : [...galleryItems, payload];
 
     setGalleryItems(nextItems);
-    saveGalleryItems(nextItems);
+    const result = await saveGalleryItems(nextItems);
+    setProductSyncNotice(result?.success ? "Gallery synced for all users." : result?.message || "Gallery sync failed.");
     resetGalleryForm();
   }
 
@@ -300,18 +304,20 @@ export default function Admin() {
     setGalleryImage(item.image);
   }
 
-  function handleDeleteGalleryItem(id) {
+  async function handleDeleteGalleryItem(id) {
     const nextItems = galleryItems.filter((item) => item.id !== id);
     setGalleryItems(nextItems);
-    saveGalleryItems(nextItems);
+    const result = await saveGalleryItems(nextItems);
+    setProductSyncNotice(result?.success ? "Gallery synced for all users." : result?.message || "Gallery sync failed.");
     if (galleryId === id) {
       resetGalleryForm();
     }
   }
 
-  function handleResetGalleryItems() {
+  async function handleResetGalleryItems() {
     setGalleryItems(defaultGalleryItems);
-    saveGalleryItems(defaultGalleryItems);
+    const result = await saveGalleryItems(defaultGalleryItems);
+    setProductSyncNotice(result?.success ? "Gallery synced for all users." : result?.message || "Gallery sync failed.");
     resetGalleryForm();
   }
 
@@ -319,28 +325,52 @@ export default function Admin() {
     setContactInfo((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSaveContactInfo(event) {
+  async function handleSaveContactInfo(event) {
     event.preventDefault();
-    saveContactInfo(contactInfo);
+    const result = await saveContactInfo(contactInfo);
+    setProductSyncNotice(result?.success ? "Contact info synced for all users." : result?.message || "Contact info sync failed.");
   }
 
-  function handleResetContactInfo() {
+  async function handleResetContactInfo() {
     setContactInfo(defaultContactInfo);
-    saveContactInfo(defaultContactInfo);
+    const result = await saveContactInfo(defaultContactInfo);
+    setProductSyncNotice(result?.success ? "Contact info synced for all users." : result?.message || "Contact info sync failed.");
   }
 
   function handleSocialLinkChange(key, value) {
     setSocialLinks((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSaveSocialLinks(event) {
+  async function handleSaveSocialLinks(event) {
     event.preventDefault();
-    saveSocialLinks(socialLinks);
+    try {
+      const response = await saveSocialLinks(socialLinks);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setProductSyncNotice(data?.message || `Failed to sync social links (${response.status}).`);
+        return;
+      }
+
+      setProductSyncNotice("Social links synced for all users.");
+    } catch {
+      setProductSyncNotice("Unable to reach server. Social links saved only on this device.");
+    }
   }
 
-  function handleResetSocialLinks() {
+  async function handleResetSocialLinks() {
     setSocialLinks(defaultSocialLinks);
-    saveSocialLinks(defaultSocialLinks);
+    try {
+      const response = await saveSocialLinks(defaultSocialLinks);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setProductSyncNotice(data?.message || `Failed to sync social links (${response.status}).`);
+        return;
+      }
+
+      setProductSyncNotice("Social links synced for all users.");
+    } catch {
+      setProductSyncNotice("Unable to reach server. Social links saved only on this device.");
+    }
   }
 
   return (
