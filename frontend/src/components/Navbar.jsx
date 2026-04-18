@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { FiMenu, FiUser, FiX, FiShoppingCart } from "react-icons/fi";
+import { FiMenu, FiUser, FiX, FiShoppingCart, FiSettings } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { useCart } from "../context/CartContext";
 import logo from "../assets/Logo.png";
@@ -72,9 +72,10 @@ export default function Navbar() {
             {isAdmin ? (
               <NavLink
                 to="/admin"
-                className="rounded-xl border border-indigo-300 px-4 py-2.5 text-sm font-medium text-indigo-700 transition-all hover:bg-indigo-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-indigo-700 shadow-sm"
               >
-                Admin
+                <FiSettings size={15} />
+                Dashboard
               </NavLink>
             ) : null}
             <NavLink
@@ -126,9 +127,10 @@ export default function Navbar() {
                   <NavLink
                     to="/admin"
                     onClick={closeMobileMenu}
-                    className="rounded-lg border border-indigo-300 px-3 py-2 text-center text-indigo-700"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-center text-white col-span-2"
                   >
-                    Admin
+                    <FiSettings size={14} />
+                    Admin Dashboard
                   </NavLink>
                 ) : null}
                 <NavLink
