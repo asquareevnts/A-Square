@@ -2,17 +2,17 @@
 @import "tailwindcss";
 
 :root {
-  --bg-cream: #f4f7fb;
-  --bg-soft: #eaf1ff;
-  --bg-rose: #fff4ec;
-  --glass-fill: rgba(255, 255, 255, 0.76);
-  --glass-border: rgba(26, 55, 95, 0.12);
-  --text-primary: #122238;
-  --text-secondary: #51647f;
-  --accent: #1f7ae0;
-  --accent-strong: #155ec3;
-  --accent-soft: #4ba2ff;
-  --highlight: #ffb76a;
+  --bg-ink: #06070f;
+  --bg-deep: #0f1324;
+  --bg-plum: #17192f;
+  --glass-fill: rgba(23, 27, 46, 0.76);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --text-primary: #f3f1ea;
+  --text-secondary: #b8bdcd;
+  --accent: #ff8e3c;
+  --accent-strong: #e86a17;
+  --accent-soft: #ffc493;
+  --highlight: #63d4ff;
 }
 
 html,
@@ -25,10 +25,10 @@ body,
   color: var(--text-primary);
   font-family: "Manrope", sans-serif;
   background:
-    radial-gradient(circle at 12% 18%, rgba(75, 162, 255, 0.2), transparent 40%),
-    radial-gradient(circle at 82% 22%, rgba(255, 183, 106, 0.2), transparent 36%),
-    radial-gradient(circle at 56% 90%, rgba(111, 146, 255, 0.16), transparent 40%),
-    linear-gradient(140deg, var(--bg-cream), var(--bg-soft) 48%, var(--bg-rose));
+    radial-gradient(circle at 12% 18%, rgba(99, 212, 255, 0.14), transparent 40%),
+    radial-gradient(circle at 82% 22%, rgba(255, 142, 60, 0.16), transparent 36%),
+    radial-gradient(circle at 56% 90%, rgba(143, 110, 255, 0.14), transparent 40%),
+    linear-gradient(140deg, var(--bg-ink), var(--bg-deep) 45%, var(--bg-plum));
   background-attachment: fixed;
   overflow-x: hidden;
 }
@@ -39,10 +39,10 @@ body::before {
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(rgba(17, 34, 56, 0.025) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(17, 34, 56, 0.025) 1px, transparent 1px);
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
   background-size: 42px 42px;
-  opacity: 0.55;
+  opacity: 0.35;
   z-index: -1;
 }
 
@@ -78,14 +78,14 @@ a[role="button"]:active {
 .bg-white,
 .bg-white\/90,
 .bg-white\/95 {
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0.72)) !important;
+  background: linear-gradient(145deg, rgba(31, 36, 60, 0.78), rgba(19, 22, 39, 0.8)) !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
 .bg-slate-50,
 .bg-slate-100 {
-  background: linear-gradient(150deg, rgba(243, 248, 255, 0.95), rgba(235, 243, 255, 0.9)) !important;
+  background: linear-gradient(150deg, rgba(18, 20, 37, 0.86), rgba(13, 15, 30, 0.88)) !important;
 }
 
 .border-slate-200,
@@ -109,14 +109,14 @@ a[role="button"]:active {
 .text-indigo-600,
 .text-indigo-700,
 .text-indigo-800 {
-  color: var(--accent) !important;
+  color: var(--accent-soft) !important;
 }
 
 .bg-indigo-600,
 .bg-slate-900,
 .bg-green-600 {
   background: linear-gradient(120deg, var(--accent-strong), var(--accent)) !important;
-  color: #ffffff !important;
+  color: #fff7f1 !important;
 }
 
 .from-indigo-600,
@@ -124,9 +124,9 @@ a[role="button"]:active {
 .to-violet-600,
 .hover\:from-indigo-700:hover,
 .hover\:to-purple-700:hover {
-  --tw-gradient-from: #155ec3 var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: rgb(31 122 224 / 0) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), #1f7ae0 var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
+  --tw-gradient-from: #e86a17 var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(255 142 60 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), #ff8e3c var(--tw-gradient-via-position), var(--tw-gradient-to) !important;
 }
 
 .shadow-sm,
@@ -144,14 +144,14 @@ a[role="button"]:active {
 input,
 textarea,
 select {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border-color: rgba(26, 55, 95, 0.18) !important;
+  background: rgba(13, 16, 30, 0.84) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
   color: var(--text-primary) !important;
 }
 
 input::placeholder,
 textarea::placeholder {
-  color: rgba(81, 100, 127, 0.65) !important;
+  color: rgba(184, 189, 205, 0.72) !important;
 }
 
 @keyframes grain {
