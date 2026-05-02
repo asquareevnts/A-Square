@@ -7,6 +7,7 @@ import {
   updateQuoteRequestStatus,
 } from '../db/database.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { sendAdminEnquiryEmail } from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -174,6 +175,31 @@ router.post('/request', async (req, res) => {
 
     const payloadQuote = serializeQuote(await getQuoteRequestById(quote.id));
 
+    const emailResult = await sendAdminEnquiryEmail({
+      subject: `New Product Quote Request #${quote.id}`,
+      enquiryType: 'Product Booking / Quote',
+      customerName,
+      customerPhone: phone,
+      customerEmail: email,
+      requirementDate: formattedDate,
+      eventLocation,
+      message: notes,
+      itemRows: cartItems.map((item) => {
+        const qty = Number(item.qty) || 1;
+        const unitPrice = Number(item.price) || 0;
+        return {
+          name: item.name,
+          qty,
+          unitPrice: `INR ${unitPrice.toLocaleString('en-IN')}`,
+          lineTotal: `INR ${(qty * unitPrice).toLocaleString('en-IN')}`,
+        };
+      }),
+      metaRows: [
+        `Quote ID: #${quote.id}`,
+        `Estimated Total: INR ${Number(totalAmount || 0).toLocaleString('en-IN')}`,
+      ],
+    });
+
     // Optional customer acknowledgement when Cloud API is configured.
     if (customerPhone && process.env.WHATSAPP_SEND_CUSTOMER_ACK === 'true') {
       const acknowledgement = [
@@ -189,6 +215,7 @@ router.post('/request', async (req, res) => {
       success: true,
       quote: payloadQuote,
       whatsapp: sendResult,
+      email: emailResult,
       message: sendResult.success
         ? 'Quote request submitted and sent to admin on WhatsApp.'
         : 'Quote request submitted. WhatsApp send is pending because Cloud API is not fully configured.',

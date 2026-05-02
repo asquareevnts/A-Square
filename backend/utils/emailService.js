@@ -209,3 +209,170 @@ export async function verifyEmailConnection() {
     return false;
   }
 }
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export async function sendAdminEnquiryEmail({
+  subject,
+  enquiryType,
+  customerName,
+  customerPhone,
+  customerEmail,
+  requirementDate,
+  eventLocation,
+  message,
+  itemRows = [],
+  metaRows = [],
+}) {
+  const adminInbox = process.env.ADMIN_NOTIFICATION_EMAIL || 'yashwanth.1mail@gmail.com';
+
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+    console.log('Admin enquiry email skipped: EMAIL_USER/EMAIL_PASSWORD not configured.');
+    return { success: false, skipped: true, reason: 'Email credentials not configured' };
+  }
+
+  const safeItemRows = Array.isArray(itemRows) ? itemRows : [];
+  const safeMetaRows = Array.isArray(metaRows) ? metaRows : [];
+  const safeSubject = subject || 'New Enquiry Received';
+  const safeEnquiryType = enquiryType || 'General Enquiry';
+
+  const itemTableHtml = safeItemRows.length
+    ? `
+      <h3 style="margin: 24px 0 10px; font-size: 16px; color: #111827;">Requested Items</h3>
+      <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+        <thead>
+          <tr style="background: #f8fafc;">
+            <th style="text-align: left; border: 1px solid #e5e7eb; padding: 10px;">Item</th>
+            <th style="text-align: left; border: 1px solid #e5e7eb; padding: 10px;">Quantity</th>
+            <th style="text-align: left; border: 1px solid #e5e7eb; padding: 10px;">Unit Price</th>
+            <th style="text-align: left; border: 1px solid #e5e7eb; padding: 10px;">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${safeItemRows
+            .map(
+              (row) => `
+                <tr>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(row.name || '-')}</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(row.qty || '-')}</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(row.unitPrice || '-')}</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(row.lineTotal || '-')}</td>
+                </tr>
+              `
+            )
+            .join('')}
+        </tbody>
+      </table>
+    `
+    : '';
+
+  const metaHtml = safeMetaRows.length
+    ? `
+      <h3 style="margin: 24px 0 10px; font-size: 16px; color: #111827;">Additional Details</h3>
+      <ul style="margin: 0; padding-left: 18px; color: #374151;">
+        ${safeMetaRows.map((line) => `<li style="margin: 6px 0;">${escapeHtml(line)}</li>`).join('')}
+      </ul>
+    `
+    : '';
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      </head>
+      <body style="margin: 0; padding: 24px; background: #f3f4f6; font-family: Arial, sans-serif; color: #111827;">
+        <div style="max-width: 760px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+          <div style="padding: 18px 22px; background: linear-gradient(135deg, #1f2937, #374151); color: #ffffff;">
+            <h2 style="margin: 0; font-size: 20px;">${escapeHtml(safeSubject)}</h2>
+            <p style="margin: 8px 0 0; font-size: 13px; opacity: 0.9;">Enquiry Type: ${escapeHtml(safeEnquiryType)}</p>
+          </div>
+
+          <div style="padding: 22px;">
+            <h3 style="margin: 0 0 10px; font-size: 16px; color: #111827;">Customer Details</h3>
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #e5e7eb;">
+              <tbody>
+                <tr>
+                  <td style="width: 180px; border: 1px solid #e5e7eb; background: #f8fafc; padding: 10px; font-weight: 600;">Name</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(customerName || 'Not provided')}</td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #e5e7eb; background: #f8fafc; padding: 10px; font-weight: 600;">Phone</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(customerPhone || 'Not provided')}</td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #e5e7eb; background: #f8fafc; padding: 10px; font-weight: 600;">Email</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(customerEmail || 'Not provided')}</td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #e5e7eb; background: #f8fafc; padding: 10px; font-weight: 600;">Required Date</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(requirementDate || 'Not specified')}</td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #e5e7eb; background: #f8fafc; padding: 10px; font-weight: 600;">Event Location</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px;">${escapeHtml(eventLocation || 'Not specified')}</td>
+                </tr>
+                <tr>
+                  <td style="border: 1px solid #e5e7eb; background: #f8fafc; padding: 10px; font-weight: 600;">Enquiry Details</td>
+                  <td style="border: 1px solid #e5e7eb; padding: 10px; white-space: pre-wrap;">${escapeHtml(message || 'No additional details provided')}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            ${itemTableHtml}
+            ${metaHtml}
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const text = [
+    `${safeSubject}`,
+    `Enquiry Type: ${safeEnquiryType}`,
+    '',
+    'Customer Details',
+    `Name: ${customerName || 'Not provided'}`,
+    `Phone: ${customerPhone || 'Not provided'}`,
+    `Email: ${customerEmail || 'Not provided'}`,
+    `Required Date: ${requirementDate || 'Not specified'}`,
+    `Event Location: ${eventLocation || 'Not specified'}`,
+    `Enquiry Details: ${message || 'No additional details provided'}`,
+    '',
+    safeItemRows.length ? 'Requested Items:' : '',
+    ...safeItemRows.map(
+      (row, index) =>
+        `${index + 1}. ${row.name || '-'} | Qty: ${row.qty || '-'} | Unit: ${row.unitPrice || '-'} | Total: ${row.lineTotal || '-'}`
+    ),
+    '',
+    safeMetaRows.length ? 'Additional Details:' : '',
+    ...safeMetaRows.map((line) => `- ${line}`),
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const mailOptions = {
+    from: process.env.EMAIL_USER || 'noreply@asquareevents.com',
+    to: adminInbox,
+    subject: safeSubject,
+    html,
+    text,
+  };
+
+  try {
+    const info = await getTransporter().sendMail(mailOptions);
+    console.log('Admin enquiry email sent:', info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Failed to send admin enquiry email:', error.message);
+    return { success: false, skipped: false, reason: error.message || 'Failed to send email' };
+  }
+}

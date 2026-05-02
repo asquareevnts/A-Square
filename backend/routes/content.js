@@ -2,6 +2,7 @@ import express from 'express';
 import { randomUUID } from 'crypto';
 import { getContentByKey, setContentByKey } from '../db/database.js';
 import { requireAdmin } from '../middleware/auth.js';
+import { sendAdminEnquiryEmail } from '../utils/emailService.js';
 
 const router = express.Router();
 
@@ -11,7 +12,8 @@ const CONTENT_KEYS = {
   gallery: 'gallery',
   contact: 'contact',
   social: 'social',
-  feedback: 'feedback'
+  feedback: 'feedback',
+  enquiries: 'enquiries'
 };
 
 function parseList(value) {
@@ -104,6 +106,60 @@ router.post('/feedback', async (req, res) => {
   await setContentByKey(CONTENT_KEYS.feedback, nextItems);
 
   return res.status(201).json({ success: true, item: entry });
+});
+
+router.post('/enquiry', async (req, res) => {
+  try {
+    const enquiryType = String(req.body?.enquiryType || 'general').trim();
+    const eventName = String(req.body?.eventName || '').trim();
+    const customerName = String(req.body?.customerName || '').trim();
+    const phone = String(req.body?.phone || '').trim();
+    const email = String(req.body?.email || '').trim();
+    const requirementDate = String(req.body?.requirementDate || '').trim();
+    const eventLocation = String(req.body?.eventLocation || '').trim();
+    const message = String(req.body?.message || '').trim();
+
+    if (!customerName || !phone || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Name, phone and enquiry details are required.',
+      });
+    }
+
+    const entry = {
+      id: randomUUID(),
+      enquiryType,
+      eventName: eventName || null,
+      customerName,
+      phone,
+      email: email || null,
+      requirementDate: requirementDate || null,
+      eventLocation: eventLocation || null,
+      message,
+      submittedAt: new Date().toISOString(),
+    };
+
+    const existing = parseList(await getContentByKey(CONTENT_KEYS.enquiries));
+    const nextItems = [entry, ...existing].slice(0, 1000);
+    await setContentByKey(CONTENT_KEYS.enquiries, nextItems);
+
+    const emailResult = await sendAdminEnquiryEmail({
+      subject: `New ${enquiryType === 'event' ? 'Event' : 'General'} Enquiry`,
+      enquiryType: enquiryType === 'event' ? 'Event Booking Enquiry' : 'General Enquiry',
+      customerName,
+      customerPhone: phone,
+      customerEmail: email,
+      requirementDate,
+      eventLocation,
+      message,
+      metaRows: [eventName ? `Event: ${eventName}` : null].filter(Boolean),
+    });
+
+    return res.status(201).json({ success: true, item: entry, email: emailResult });
+  } catch (error) {
+    console.error('Failed to create enquiry:', error);
+    return res.status(500).json({ success: false, message: 'Failed to submit enquiry.' });
+  }
 });
 
 export default router;
