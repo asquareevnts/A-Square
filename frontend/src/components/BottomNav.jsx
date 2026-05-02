@@ -13,7 +13,7 @@ export default function BottomNav() {
     <Link
       to={path}
       className={`flex min-w-[56px] flex-col items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium ${
-        location.pathname === path ? "text-cyan-100" : "text-slate-300"
+        location.pathname === path ? "text-indigo-700" : "text-slate-600"
       }`}
       aria-label={label}
     >
@@ -23,7 +23,7 @@ export default function BottomNav() {
   );
 
   return (
-    <div className="fixed bottom-0 left-0 z-40 w-full border-t border-white/20 bg-[#071b2ef0] backdrop-blur-xl md:hidden">
+    <div className="fixed bottom-0 left-0 z-40 w-full border-t border-slate-200 bg-white/90 backdrop-blur-xl md:hidden">
       <div className="mx-auto flex max-w-xl items-center justify-around px-2 py-2">
         {navItem("/", <FaHome size={18} />, "Home")}
         {navItem("/events", <FaCalendarAlt size={18} />, "Events")}
@@ -35,7 +35,7 @@ export default function BottomNav() {
         <Link
           to="/cart"
           className={`relative flex min-w-[56px] flex-col items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium ${
-            location.pathname === "/cart" ? "text-cyan-100" : "text-slate-300"
+            location.pathname === "/cart" ? "text-indigo-700" : "text-slate-600"
           }`}
           aria-label="Cart"
         >
