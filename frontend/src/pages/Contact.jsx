@@ -2,10 +2,14 @@ import { useEffect, useState } from "react";
 import { FaFacebook, FaInstagram, FaWhatsapp, FaYoutube } from "react-icons/fa";
 import { loadContactInfo } from "../data/contactStore";
 import { loadSocialLinks } from "../data/socialLinksStore";
+import { buildApiUrl } from "../config/api";
 
 export default function Contact() {
   const [contactInfo, setContactInfo] = useState(() => loadContactInfo());
   const [socialLinks, setSocialLinks] = useState(() => loadSocialLinks());
+  const [feedback, setFeedback] = useState({ name: "", email: "", message: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStatus, setSubmitStatus] = useState({ type: "", message: "" });
 
   useEffect(() => {
     function refreshContactInfo() {
@@ -35,6 +39,46 @@ export default function Contact() {
     { key: "whatsapp", label: "WhatsApp", icon: FaWhatsapp },
     { key: "youtube", label: "YouTube", icon: FaYoutube }
   ];
+
+  async function handleFeedbackSubmit(event) {
+    event.preventDefault();
+    setSubmitStatus({ type: "", message: "" });
+
+    const payload = {
+      name: feedback.name.trim(),
+      email: feedback.email.trim(),
+      message: feedback.message.trim()
+    };
+
+    if (!payload.message) {
+      setSubmitStatus({ type: "error", message: "Please enter your feedback." });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(buildApiUrl("/api/content/feedback"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload)
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.message || "Unable to submit feedback right now.");
+      }
+
+      setFeedback({ name: "", email: "", message: "" });
+      setSubmitStatus({ type: "success", message: "Thank you! Your feedback was submitted." });
+    } catch (error) {
+      setSubmitStatus({ type: "error", message: error.message || "Unable to submit feedback right now." });
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <section className="min-h-screen bg-white px-4 pb-20 pt-8 sm:px-6">
@@ -71,24 +115,41 @@ export default function Contact() {
           </div>
         </div>
 
-        <form className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-          <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Send a Message</h2>
+        <form onSubmit={handleFeedbackSubmit} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
+          <h2 className="text-xl font-semibold text-slate-900 sm:text-2xl">Share Your Feedback</h2>
           <div className="mt-6 space-y-4">
             <input
+              value={feedback.name}
+              onChange={(event) => setFeedback((prev) => ({ ...prev, name: event.target.value }))}
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
               placeholder="Your Name"
             />
             <input
+              value={feedback.email}
+              onChange={(event) => setFeedback((prev) => ({ ...prev, email: event.target.value }))}
+              type="email"
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
               placeholder="Email"
             />
             <textarea
+              value={feedback.message}
+              onChange={(event) => setFeedback((prev) => ({ ...prev, message: event.target.value }))}
+              required
               className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500"
-              placeholder="Message"
+              placeholder="Tell us how we can improve"
               rows="5"
             />
-            <button className="w-full rounded-xl bg-slate-900 py-3 font-semibold text-white transition hover:bg-slate-800">
-              Send Message
+            {submitStatus.message ? (
+              <p className={`text-sm ${submitStatus.type === "success" ? "text-emerald-400" : "text-rose-400"}`}>
+                {submitStatus.message}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-xl bg-slate-900 py-3 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? "Submitting..." : "Submit Feedback"}
             </button>
           </div>
         </form>
