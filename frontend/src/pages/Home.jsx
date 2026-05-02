@@ -47,16 +47,16 @@ export default function Home() {
     <div className="min-h-screen bg-white text-slate-900">
 
       {/* ── Hero ─────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 pb-16 pt-10 sm:px-6 md:pt-20">
+      <section className="relative overflow-hidden bg-gradient-to-br from-[#14172b] via-[#101426] to-[#1b1e35] px-4 pb-16 pt-10 sm:px-6 md:pt-20">
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-12 md:grid-cols-2 md:items-center">
             <motion.div initial="hidden" animate="show" variants={fadeUp}>
-              <span className="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-4 py-1.5 text-sm font-medium text-indigo-700">
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/8 px-4 py-1.5 text-sm font-medium text-orange-200">
                 <FiShoppingBag size={14} /> Premium Event Merchandise
               </span>
               <h1 className="mt-4 text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl md:text-6xl">
                 Elevate Every
-                <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent"> Event Moment</span>
+                <span className="bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent"> Event Moment</span>
               </h1>
               <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600 sm:text-lg">
                 Discover premium stage setups, lighting kits, seating bundles and event branding — all in one place, delivered fast.
@@ -64,13 +64,13 @@ export default function Home() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <button
                   onClick={() => navigate("/products")}
-                  className="rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-7 py-3 font-semibold text-white shadow-md transition hover:from-indigo-700 hover:to-purple-700"
+                  className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-400 px-7 py-3 font-semibold text-slate-950 shadow-md transition hover:from-orange-400 hover:to-amber-300"
                 >
                   Shop Now
                 </button>
                 <button
                   onClick={() => navigate("/events")}
-                  className="rounded-xl border border-slate-300 bg-white px-7 py-3 font-semibold text-slate-800 transition hover:border-indigo-400 hover:text-indigo-600"
+                  className="rounded-xl border border-white/15 bg-white/6 px-7 py-3 font-semibold text-slate-100 transition hover:border-orange-300 hover:text-orange-300"
                 >
                   View Events
                 </button>
@@ -94,10 +94,10 @@ export default function Home() {
                 { label: "Cities",   value: "15+",  sub: "Pan India" },
                 { label: "Clients",  value: "500+", sub: "Trusted brands" },
               ].map((stat) => (
-                <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div key={stat.label} className="rounded-2xl border border-white/12 bg-white/8 p-5 shadow-sm">
                   <p className="text-sm font-medium text-slate-500">{stat.label}</p>
                   <p className="mt-1 text-3xl font-extrabold text-slate-900">{stat.value}</p>
-                  <p className="mt-1 text-xs text-indigo-600">{stat.sub}</p>
+                  <p className="mt-1 text-xs text-orange-300">{stat.sub}</p>
                 </div>
               ))}
             </motion.div>
