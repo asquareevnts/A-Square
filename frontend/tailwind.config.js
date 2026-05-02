@@ -7,9 +7,9 @@ export default {
     theme: {
       extend: {
         fontFamily: {
-          heading: ["Poppins", "sans-serif"],
-          body: ["Inter", "sans-serif"],
-          elegant: ["Playfair Display", "serif"],
+          heading: ["Sora", "sans-serif"],
+          body: ["Manrope", "sans-serif"],
+          elegant: ["Sora", "sans-serif"],
         },
       },
     },

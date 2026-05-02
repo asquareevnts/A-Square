@@ -4,13 +4,13 @@ import FloatingContact from "../components/FloatingContact"
 
 export default function MainLayout({ children }) {
   return (
-    <>
+    <div className="relative min-h-screen">
       <Navbar />
       <main className="pt-24 pb-24 md:pb-0">
         {children}
       </main>
       <BottomNav />
       <FloatingContact />
-    </>
+    </div>
   )
 }
