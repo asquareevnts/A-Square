@@ -146,13 +146,13 @@ export default function Home() {
           </div>
 
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {products.map((product, i) => (
+            {products.length > 0 ? products.map((product, i) => (
               <motion.article
                 key={product.id}
                 initial="hidden" whileInView="show" custom={i * 0.08} variants={fadeUp} viewport={{ once: true }}
-                className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+                className="group rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-sm transition hover:shadow-md"
               >
-                <div className="overflow-hidden rounded-xl bg-slate-50">
+                <div className="overflow-hidden rounded-xl bg-slate-50/80">
                   <img
                     src={product.image}
                     alt={product.name}
@@ -175,7 +175,18 @@ export default function Home() {
                   {addedIds.has(product.id) ? "Added!" : "Add to Cart"}
                 </button>
               </motion.article>
-            ))}
+            )) : (
+              <div className="rounded-2xl border border-slate-200 bg-white/90 p-8 text-center shadow-sm sm:col-span-2 lg:col-span-3">
+                <p className="text-lg font-semibold text-slate-900">Products are being updated</p>
+                <p className="mt-2 text-sm text-slate-600">No featured products available right now. Please check again in a moment.</p>
+                <button
+                  onClick={() => navigate("/products")}
+                  className="mt-5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:from-indigo-700 hover:to-purple-700"
+                >
+                  Open Products Page
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="mt-8 text-center sm:hidden">

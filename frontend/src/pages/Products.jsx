@@ -141,12 +141,12 @@ export default function Products() {
         </div>
 
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {products.map((product) => (
+          {products.length > 0 ? products.map((product) => (
             <article
               key={product.id}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+              className="rounded-2xl border border-slate-200 bg-white/95 p-5 shadow-sm transition hover:shadow-md"
             >
-              <div className="overflow-hidden rounded-xl bg-slate-50">
+              <div className="overflow-hidden rounded-xl bg-slate-50/80">
                 <img
                   src={product.image}
                   alt={product.name}
@@ -178,7 +178,20 @@ export default function Products() {
                 )}
               </button>
             </article>
-          ))}
+          )) : (
+            <div className="rounded-2xl border border-slate-200 bg-white/90 p-8 text-center shadow-sm sm:col-span-2 lg:col-span-3">
+              <p className="text-lg font-semibold text-slate-900">No products found</p>
+              <p className="mt-2 text-sm text-slate-600">
+                Products are currently unavailable or still syncing. Please refresh after a few seconds.
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-5 rounded-xl border border-slate-300 px-6 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-indigo-500 hover:text-indigo-600"
+              >
+                Refresh Products
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>
