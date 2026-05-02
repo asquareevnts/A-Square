@@ -262,14 +262,37 @@ export default function SignIn() {
   };
 
   return (
-    <section className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 px-4 pb-20 pt-8 sm:px-6">
-      <div className="mx-auto max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-3xl font-bold text-slate-900 sm:text-4xl">Welcome Back</h1>
-          <p className="text-slate-600">Sign in to continue to ASquare Events</p>
-        </div>
+    <section className="min-h-screen bg-gradient-to-br from-[#111325] via-[#0d1020] to-[#1a1e37] px-4 pb-20 pt-8 sm:px-6">
+      <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-2 md:items-stretch">
+        <aside className="hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-xl backdrop-blur-xl md:flex md:flex-col md:justify-between">
+          <div>
+            <p className="inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-orange-200">
+              ASquare Events
+            </p>
+            <h2 className="mt-4 text-3xl font-bold leading-tight text-white">
+              Sign in and manage bookings faster
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-300">
+              Access your profile, track enquiries, and get instant quote updates for your products and events.
+            </p>
+          </div>
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-sm font-semibold text-white">What you get after login</p>
+            <ul className="space-y-2 text-sm text-slate-300">
+              <li>Real-time quote request updates</li>
+              <li>Faster checkout and contact auto-fill</li>
+              <li>Admin dashboard access for managers</li>
+            </ul>
+          </div>
+        </aside>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-lg sm:p-8">
+        <div>
+          <div className="mb-6 text-center md:text-left">
+            <h1 className="mb-2 text-3xl font-bold text-white sm:text-4xl">Welcome Back</h1>
+            <p className="text-slate-300">Sign in to continue to ASquare Events</p>
+          </div>
+
+          <div className="rounded-3xl border border-white/12 bg-white/95 p-6 shadow-xl backdrop-blur sm:p-8">
           <button
             onClick={handleGoogleSignIn}
             type="button"
@@ -447,14 +470,15 @@ export default function SignIn() {
               </button>
             </form>
           )}
-        </div>
+          </div>
 
-        <p className="mt-6 text-center text-sm text-slate-600">
-          Don&apos;t have an account?{" "}
-          <Link to="/signup" className="font-semibold text-indigo-600 hover:text-indigo-700">
-            Sign Up
-          </Link>
-        </p>
+          <p className="mt-6 text-center text-sm text-slate-300">
+            Don&apos;t have an account?{" "}
+            <Link to="/signup" className="font-semibold text-orange-300 hover:text-orange-200">
+              Sign Up
+            </Link>
+          </p>
+        </div>
       </div>
 
       {showForgotPassword ? (
