@@ -112,11 +112,19 @@ a[role="button"]:active {
   color: var(--accent-soft) !important;
 }
 
-.bg-indigo-600,
-.bg-slate-900,
-.bg-green-600 {
+.bg-indigo-600 {
   background: linear-gradient(120deg, var(--accent-strong), var(--accent)) !important;
   color: #fff7f1 !important;
+}
+
+.bg-slate-900 {
+  background: #111427 !important;
+  color: #f3f1ea !important;
+}
+
+.bg-green-600 {
+  background: #16a34a !important;
+  color: #ffffff !important;
 }
 
 .from-indigo-600,
