@@ -4,7 +4,7 @@ import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
 import session from 'express-session';
-import connectPgSimple from 'connect-pg-simple';
+import MongoStore from 'connect-mongo';
 import passport from 'passport';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -12,12 +12,11 @@ import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import authRoutes from './routes/auth.js';
 import contentRoutes from './routes/content.js';
 import quoteRoutes from './routes/quote.js';
-import { getPool, initDatabase } from './db/database.js';
+import { closeDatabase, initDatabase } from './db/database.js';
 import { verifyEmailConnection } from './utils/emailService.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const PgStore = connectPgSimple(session);
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 function parseBoolean(value, defaultValue = false) {
@@ -47,8 +46,8 @@ function validateEnvironment() {
   const sessionSecret = String(process.env.SESSION_SECRET || '');
   const explicitOrigins = parseOriginList(process.env.CORS_ALLOWED_ORIGINS || process.env.FRONTEND_URL);
 
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required.');
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI is required.');
   }
 
   if (!sessionSecret || sessionSecret.length < 32) {
@@ -84,7 +83,12 @@ function isAllowedOrigin(origin) {
     return false;
   }
 
-  return /\.trycloudflare\.com$/i.test(origin) || /\.netlify\.app$/i.test(origin) || /\.onrender\.com$/i.test(origin);
+  return (
+    /\.trycloudflare\.com$/i.test(origin) ||
+    /\.netlify\.app$/i.test(origin) ||
+    /\.vercel\.app$/i.test(origin) ||
+    /\.onrender\.com$/i.test(origin)
+  );
 }
 
 // Middleware
@@ -140,10 +144,10 @@ const quoteLimiter = rateLimit({
 app.use(session({
   secret: process.env.SESSION_SECRET,
   name: 'event.sid',
-  store: new PgStore({
-    pool: getPool(),
-    tableName: 'user_sessions',
-    createTableIfMissing: true
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    collectionName: 'user_sessions',
+    ttl: 14 * 24 * 60 * 60
   }),
   resave: false,
   saveUninitialized: false,
@@ -244,11 +248,11 @@ async function startServer() {
       console.log(`Received ${signal}. Closing HTTP server...`);
       server.close(async () => {
         try {
-          await getPool().end();
-          console.log('PostgreSQL pool closed. Exiting process.');
+          await closeDatabase();
+          console.log('MongoDB connection closed. Exiting process.');
           process.exit(0);
         } catch (error) {
-          console.error('Error while closing PostgreSQL pool:', error);
+          console.error('Error while closing MongoDB connection:', error);
           process.exit(1);
         }
       });

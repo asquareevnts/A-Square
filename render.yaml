@@ -1,8 +1,3 @@
-databases:
-  - name: event-postgres
-    databaseName: event_platform
-    user: event_platform_user
-
 services:
   - type: web
     name: event-backend
@@ -18,14 +13,12 @@ services:
         generateValue: true
       - key: OTP_SECRET
         generateValue: true
-      - key: DATABASE_URL
-        fromDatabase:
-          name: event-postgres
-          property: connectionString
+      - key: MONGODB_URI
+        sync: false
       - key: FRONTEND_URL
-        value: https://event-frontend-w18p.onrender.com
+        sync: false
       - key: CORS_ALLOWED_ORIGINS
-        value: https://event-frontend-w18p.onrender.com
+        sync: false
       - key: CORS_ALLOW_PUBLIC_PREVIEW_ORIGINS
         value: false
       - key: ADMIN_EMAIL

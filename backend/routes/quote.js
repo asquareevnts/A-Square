@@ -212,7 +212,7 @@ router.get('/', requireAdmin, async (req, res) => {
 
 router.patch('/:id/status', requireAdmin, async (req, res) => {
   try {
-    const quoteId = Number(req.params.id);
+    const quoteId = String(req.params.id || '');
     const { status, adminNotes } = req.body;
     const normalizedStatus = String(status || '').toUpperCase();
 

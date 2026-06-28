@@ -1,170 +1,103 @@
 import bcrypt from 'bcryptjs';
-import pkg from 'pg';
+import mongoose from 'mongoose';
 
-const { Pool } = pkg;
+const DEFAULT_MONGODB_URI = 'mongodb://127.0.0.1:27017/event-platform';
 
-let pool;
+const schemaOptions = {
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
+};
 
-function wait(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
+const userSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true, index: true },
+    password: { type: String, default: null },
+    full_name: { type: String, required: true },
+    phone: { type: String, default: null },
+    address: { type: String, default: null },
+    profile_picture: { type: String, default: null },
+    provider: { type: String, enum: ['local', 'google'], default: 'local' },
+    google_id: { type: String, default: null, unique: true, sparse: true },
+    role: { type: String, enum: ['customer', 'admin'], default: 'customer' },
+    email_verified: { type: Boolean, default: false },
+    last_login: { type: Date, default: null }
+  },
+  schemaOptions
+);
 
-function getDatabaseTarget() {
-  try {
-    const parsedUrl = new URL(String(process.env.DATABASE_URL || ''));
-    return `${parsedUrl.hostname}:${parsedUrl.port || '5432'}`;
-  } catch {
-    return 'unknown-host';
-  }
-}
+const contentStoreSchema = new mongoose.Schema(
+  {
+    key: { type: String, required: true, unique: true, index: true },
+    value: { type: mongoose.Schema.Types.Mixed, required: true }
+  },
+  schemaOptions
+);
 
-function getSslConfig() {
-  const databaseUrl = String(process.env.DATABASE_URL || '');
-  const sslMode = String(process.env.PGSSLMODE || '').toLowerCase();
+const quoteRequestSchema = new mongoose.Schema(
+  {
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
+    customer_name: { type: String, required: true },
+    phone: { type: String, required: true },
+    email: { type: String, default: null },
+    requirement_date: { type: String, required: true },
+    event_location: { type: String, default: null },
+    notes: { type: String, default: null },
+    requested_items: { type: [mongoose.Schema.Types.Mixed], default: [] },
+    total_amount: { type: Number, required: true, default: 0 },
+    status: { type: String, enum: ['PENDING', 'ACCEPTED', 'REJECTED'], default: 'PENDING' },
+    admin_notes: { type: String, default: null },
+    reviewed_by: { type: String, default: null },
+    whatsapp_message_id: { type: String, default: null }
+  },
+  schemaOptions
+);
 
-  if (sslMode === 'disable' || databaseUrl.includes('sslmode=disable')) {
-    return false;
-  }
+const passwordResetTokenSchema = new mongoose.Schema(
+  {
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    token: { type: String, required: true, unique: true, index: true },
+    expires_at: { type: Date, required: true, index: true }
+  },
+  schemaOptions
+);
 
-  if (sslMode === 'require' || databaseUrl.includes('sslmode=require')) {
-    return { rejectUnauthorized: false };
-  }
+const phoneLoginTokenSchema = new mongoose.Schema(
+  {
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
+    phone: { type: String, required: true, index: true },
+    token_hash: { type: String, required: true, index: true },
+    expires_at: { type: Date, required: true, index: true },
+    consumed_at: { type: Date, default: null }
+  },
+  schemaOptions
+);
 
-  try {
-    const parsedUrl = new URL(databaseUrl);
-    const hostname = String(parsedUrl.hostname || '').toLowerCase();
-    const isLocalHost = ['localhost', '127.0.0.1', '::1'].includes(hostname);
+const User = mongoose.models.User || mongoose.model('User', userSchema);
+const ContentStore = mongoose.models.ContentStore || mongoose.model('ContentStore', contentStoreSchema);
+const QuoteRequest = mongoose.models.QuoteRequest || mongoose.model('QuoteRequest', quoteRequestSchema);
+const PasswordResetToken =
+  mongoose.models.PasswordResetToken || mongoose.model('PasswordResetToken', passwordResetTokenSchema);
+const PhoneLoginToken =
+  mongoose.models.PhoneLoginToken || mongoose.model('PhoneLoginToken', phoneLoginTokenSchema);
 
-    if (isLocalHost) {
-      return false;
-    }
-  } catch {
-    // Fall back to environment-based defaults if DATABASE_URL is not a parseable URL.
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    return { rejectUnauthorized: false };
-  }
-
-  return false;
-}
-
-export function getPool() {
-  if (!pool) {
-    pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: getSslConfig(),
-    });
-
-    pool.on('error', (error) => {
-      console.error('Unexpected PostgreSQL pool error:', error);
-    });
-  }
-
-  return pool;
-}
-
-function mapUser(row) {
-  if (!row) {
+function toObject(doc) {
+  if (!doc) {
     return null;
   }
 
-  return {
-    ...row,
-    email_verified: Boolean(row.email_verified),
-  };
+  const source = doc.toObject ? doc.toObject() : doc;
+  return { ...source, id: String(source._id) };
 }
 
-function mapQuote(row) {
-  if (!row) {
-    return null;
-  }
-
-  return {
-    ...row,
-    requested_items: Array.isArray(row.requested_items) ? row.requested_items : [],
-  };
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
 }
 
-async function ensureSchema() {
-  const database = getPool();
-
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id BIGSERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT,
-      full_name TEXT NOT NULL,
-      phone TEXT,
-      address TEXT,
-      profile_picture TEXT,
-      provider TEXT NOT NULL DEFAULT 'local',
-      google_id TEXT UNIQUE,
-      role TEXT NOT NULL DEFAULT 'customer',
-      email_verified BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      last_login TIMESTAMPTZ
-    )
-  `);
-
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-      id BIGSERIAL PRIMARY KEY,
-      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      token TEXT UNIQUE NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS phone_login_tokens (
-      id BIGSERIAL PRIMARY KEY,
-      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      phone TEXT NOT NULL,
-      token_hash TEXT NOT NULL,
-      expires_at TIMESTAMPTZ NOT NULL,
-      consumed_at TIMESTAMPTZ,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS content_store (
-      key TEXT PRIMARY KEY,
-      value JSONB NOT NULL,
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await database.query(`
-    CREATE TABLE IF NOT EXISTS quote_requests (
-      id BIGSERIAL PRIMARY KEY,
-      user_id BIGINT REFERENCES users(id) ON DELETE SET NULL,
-      customer_name TEXT NOT NULL,
-      phone TEXT NOT NULL,
-      email TEXT,
-      requirement_date DATE NOT NULL,
-      event_location TEXT,
-      notes TEXT,
-      requested_items JSONB NOT NULL DEFAULT '[]'::jsonb,
-      total_amount NUMERIC(12, 2) NOT NULL,
-      status TEXT NOT NULL DEFAULT 'PENDING',
-      admin_notes TEXT,
-      reviewed_by TEXT,
-      whatsapp_message_id TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      CONSTRAINT quote_requests_status_check CHECK (status IN ('PENDING', 'ACCEPTED', 'REJECTED'))
-    )
-  `);
+function normalizeDigits(value) {
+  return String(value || '').replace(/\D/g, '');
 }
 
 async function ensureAdminUser() {
-  const adminEmail = String(process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const adminEmail = normalizeEmail(process.env.ADMIN_EMAIL);
   const adminPassword = String(process.env.ADMIN_PASSWORD || '');
   const adminName = String(process.env.ADMIN_FULL_NAME || 'Platform Admin').trim();
 
@@ -172,181 +105,148 @@ async function ensureAdminUser() {
     return;
   }
 
-  const existing = await getUserByEmail(adminEmail);
   const hashedPassword = await bcrypt.hash(adminPassword, 10);
+  const existing = await User.findOne({ email: adminEmail });
 
   if (!existing) {
-    await getPool().query(
-      `
-        INSERT INTO users (email, password, full_name, provider, role, email_verified)
-        VALUES ($1, $2, $3, 'local', 'admin', TRUE)
-      `,
-      [adminEmail, hashedPassword, adminName]
-    );
+    await User.create({
+      email: adminEmail,
+      password: hashedPassword,
+      full_name: adminName,
+      provider: 'local',
+      role: 'admin',
+      email_verified: true
+    });
     return;
   }
 
-  await getPool().query(
-    `
-      UPDATE users
-      SET password = $2,
-          full_name = $3,
-          role = 'admin',
-          provider = 'local',
-          updated_at = NOW()
-      WHERE email = $1
-    `,
-    [adminEmail, hashedPassword, adminName]
-  );
+  existing.password = hashedPassword;
+  existing.full_name = adminName;
+  existing.provider = 'local';
+  existing.role = 'admin';
+  await existing.save();
 }
 
 export async function initDatabase() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is required. Configure PostgreSQL before starting the backend.');
+  if (mongoose.connection.readyState === 1) {
+    return;
   }
 
-  const maxAttempts = Math.max(Number(process.env.DB_INIT_MAX_RETRIES || 12), 1);
-  const retryDelayMs = Math.max(Number(process.env.DB_INIT_RETRY_DELAY_MS || 5000), 500);
-  const target = getDatabaseTarget();
-
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    try {
-      await ensureSchema();
-      await ensureAdminUser();
-      console.log(`PostgreSQL schema initialized successfully (${target})`);
-      return;
-    } catch (error) {
-      const canRetry = attempt < maxAttempts && ['ECONNREFUSED', 'ENOTFOUND', 'ETIMEDOUT'].includes(error?.code);
-
-      if (!canRetry) {
-        throw error;
-      }
-
-      console.warn(
-        `PostgreSQL init attempt ${attempt}/${maxAttempts} failed (${error.code}) for ${target}. Retrying in ${retryDelayMs}ms...`
-      );
-      await wait(retryDelayMs);
-    }
+  const mongoUri = String(process.env.MONGODB_URI || DEFAULT_MONGODB_URI).trim();
+  if (!mongoUri) {
+    throw new Error('MONGODB_URI is required. Configure MongoDB before starting the backend.');
   }
+
+  await mongoose.connect(mongoUri, { autoIndex: true });
+  await ensureAdminUser();
+  console.log('MongoDB initialized successfully');
+}
+
+export async function closeDatabase() {
+  if (mongoose.connection.readyState === 0) {
+    return;
+  }
+
+  await mongoose.disconnect();
 }
 
 export async function getContentByKey(key) {
-  const { rows } = await getPool().query('SELECT value FROM content_store WHERE key = $1', [key]);
-  return rows[0]?.value ?? null;
+  const row = await ContentStore.findOne({ key }).lean();
+  return row ? row.value : null;
 }
 
 export async function setContentByKey(key, value) {
-  await getPool().query(
-    `
-      INSERT INTO content_store (key, value, updated_at)
-      VALUES ($1, $2::jsonb, NOW())
-      ON CONFLICT (key)
-      DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()
-    `,
-    [key, JSON.stringify(value)]
+  await ContentStore.findOneAndUpdate(
+    { key },
+    { $set: { value } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 }
 
 export async function createQuoteRequest(payload) {
-  const { rows } = await getPool().query(
-    `
-      INSERT INTO quote_requests (
-        user_id,
-        customer_name,
-        phone,
-        email,
-        requirement_date,
-        event_location,
-        notes,
-        requested_items,
-        total_amount,
-        status,
-        whatsapp_message_id
-      )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, 'PENDING', $10)
-      RETURNING *
-    `,
-    [
-      payload.userId || null,
-      payload.customerName,
-      payload.phone,
-      payload.email || null,
-      payload.requirementDate,
-      payload.eventLocation || null,
-      payload.notes || null,
-      JSON.stringify(payload.cartItems || []),
-      Number(payload.totalAmount || 0),
-      payload.whatsappMessageId || null,
-    ]
-  );
+  const created = await QuoteRequest.create({
+    user_id: payload.userId || null,
+    customer_name: payload.customerName,
+    phone: payload.phone,
+    email: payload.email || null,
+    requirement_date: payload.requirementDate,
+    event_location: payload.eventLocation || null,
+    notes: payload.notes || null,
+    requested_items: payload.cartItems || [],
+    total_amount: Number(payload.totalAmount || 0),
+    status: 'PENDING',
+    whatsapp_message_id: payload.whatsappMessageId || null
+  });
 
-  return mapQuote(rows[0]);
+  return toObject(created);
 }
 
 export async function getQuoteRequestById(id) {
-  const { rows } = await getPool().query('SELECT * FROM quote_requests WHERE id = $1', [id]);
-  return mapQuote(rows[0]);
+  if (!mongoose.Types.ObjectId.isValid(String(id))) {
+    return null;
+  }
+
+  const row = await QuoteRequest.findById(id).lean();
+  return toObject(row);
 }
 
 export async function listQuoteRequests(limit = 100) {
   const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
-  const { rows } = await getPool().query(
-    'SELECT * FROM quote_requests ORDER BY created_at DESC LIMIT $1',
-    [safeLimit]
-  );
-
-  return rows.map(mapQuote);
+  const rows = await QuoteRequest.find({}).sort({ created_at: -1 }).limit(safeLimit).lean();
+  return rows.map((row) => toObject(row));
 }
 
 export async function updateQuoteRequestStatus(id, status, adminNotes = '', reviewedBy = '') {
-  const { rows } = await getPool().query(
-    `
-      UPDATE quote_requests
-      SET status = $2,
-          admin_notes = $3,
-          reviewed_by = $4,
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `,
-    [id, status, adminNotes || null, reviewedBy || null]
-  );
+  if (!mongoose.Types.ObjectId.isValid(String(id))) {
+    return null;
+  }
 
-  return mapQuote(rows[0]);
+  const row = await QuoteRequest.findByIdAndUpdate(
+    id,
+    {
+      $set: {
+        status,
+        admin_notes: adminNotes || null,
+        reviewed_by: reviewedBy || null
+      }
+    },
+    { new: true }
+  ).lean();
+
+  return toObject(row);
 }
 
 export async function setQuoteRequestWhatsAppMessageId(id, messageId) {
-  const { rows } = await getPool().query(
-    `
-      UPDATE quote_requests
-      SET whatsapp_message_id = $2,
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING *
-    `,
-    [id, messageId || null]
-  );
+  if (!mongoose.Types.ObjectId.isValid(String(id))) {
+    return null;
+  }
 
-  return mapQuote(rows[0]);
+  const row = await QuoteRequest.findByIdAndUpdate(
+    id,
+    { $set: { whatsapp_message_id: messageId || null } },
+    { new: true }
+  ).lean();
+
+  return toObject(row);
 }
 
 export async function createUser(email, password, fullName, phone = null) {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const { rows } = await getPool().query(
-      `
-        INSERT INTO users (email, password, full_name, phone, provider, role)
-        VALUES ($1, $2, $3, $4, 'local', 'customer')
-        RETURNING id, email, full_name, phone, address, profile_picture, provider, role, email_verified
-      `,
-      [normalizedEmail, hashedPassword, fullName, phone]
-    );
+    const created = await User.create({
+      email: normalizedEmail,
+      password: hashedPassword,
+      full_name: fullName,
+      phone,
+      provider: 'local',
+      role: 'customer'
+    });
 
-    return mapUser(rows[0]);
+    return toObject(created);
   } catch (error) {
-    if (error.code === '23505') {
+    if (error?.code === 11000) {
       throw new Error('Email already exists');
     }
 
@@ -355,39 +255,38 @@ export async function createUser(email, password, fullName, phone = null) {
 }
 
 export async function getUserByEmail(email) {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
-  const { rows } = await getPool().query('SELECT * FROM users WHERE email = $1', [normalizedEmail]);
-  return mapUser(rows[0]);
+  const user = await User.findOne({ email: normalizeEmail(email) }).lean();
+  return toObject(user);
 }
 
 export async function getUserById(id) {
-  const { rows } = await getPool().query('SELECT * FROM users WHERE id = $1', [id]);
-  return mapUser(rows[0]);
+  if (!mongoose.Types.ObjectId.isValid(String(id))) {
+    return null;
+  }
+
+  const user = await User.findById(id).lean();
+  return toObject(user);
 }
 
 export async function getUserByPhone(phoneDigits) {
-  const cleanedDigits = String(phoneDigits || '').replace(/\D/g, '');
+  const cleanedDigits = normalizeDigits(phoneDigits);
   const localTen = cleanedDigits.length > 10 ? cleanedDigits.slice(-10) : cleanedDigits;
 
   if (!localTen) {
     return null;
   }
 
-  const { rows } = await getPool().query(
-    `
-      SELECT *
-      FROM users
-      WHERE regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') IN ($1, $2)
-      ORDER BY CASE
-        WHEN regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') = $1 THEN 0
-        ELSE 1
-      END
-      LIMIT 1
-    `,
-    [cleanedDigits, localTen]
-  );
+  const users = await User.find({ phone: { $ne: null } }).lean();
+  const matched = users.find((user) => {
+    const userDigits = normalizeDigits(user.phone);
+    if (!userDigits) {
+      return false;
+    }
 
-  return mapUser(rows[0]);
+    return userDigits === cleanedDigits || userDigits.endsWith(localTen);
+  });
+
+  return toObject(matched || null);
 }
 
 export async function verifyPassword(plainPassword, hashedPassword) {
@@ -399,178 +298,184 @@ export async function verifyPassword(plainPassword, hashedPassword) {
 }
 
 export async function updateLastLogin(userId) {
-  await getPool().query('UPDATE users SET last_login = NOW(), updated_at = NOW() WHERE id = $1', [userId]);
+  if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+    return;
+  }
+
+  await User.findByIdAndUpdate(userId, { $set: { last_login: new Date() } });
 }
 
 export async function updateUserProfile(userId, payload) {
+  if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+    return null;
+  }
+
   const fullName = String(payload.fullName || '').trim();
   const phone = String(payload.phone || '').trim();
   const address = String(payload.address || '').trim();
 
-  const { rows } = await getPool().query(
-    `
-      UPDATE users
-      SET full_name = $2,
-          phone = $3,
-          address = $4,
-          updated_at = NOW()
-      WHERE id = $1
-      RETURNING id, email, full_name, phone, address, profile_picture, provider, role, email_verified
-    `,
-    [userId, fullName, phone || null, address || null]
-  );
+  const user = await User.findByIdAndUpdate(
+    userId,
+    {
+      $set: {
+        full_name: fullName,
+        phone: phone || null,
+        address: address || null
+      }
+    },
+    { new: true }
+  ).lean();
 
-  return mapUser(rows[0]);
+  return toObject(user);
 }
 
 export async function findOrCreateGoogleUser(profile) {
-  const email = String(profile.emails?.[0]?.value || '').trim().toLowerCase();
+  const email = normalizeEmail(profile.emails?.[0]?.value);
   const googleId = String(profile.id || '');
   const fullName = String(profile.displayName || email || 'Google User');
   const profilePicture = profile.photos?.[0]?.value || null;
 
-  let { rows } = await getPool().query('SELECT * FROM users WHERE google_id = $1', [googleId]);
-  let user = mapUser(rows[0]);
+  let user = await User.findOne({ google_id: googleId });
 
   if (user) {
-    await getPool().query(
-      `
-        UPDATE users
-        SET full_name = $2,
-            profile_picture = $3,
-            email_verified = TRUE,
-            last_login = NOW(),
-            updated_at = NOW()
-        WHERE id = $1
-      `,
-      [user.id, fullName, profilePicture]
-    );
-
-    return getUserById(user.id);
+    user.full_name = fullName;
+    user.profile_picture = profilePicture;
+    user.email_verified = true;
+    user.last_login = new Date();
+    await user.save();
+    return toObject(user);
   }
 
-  user = await getUserByEmail(email);
+  user = await User.findOne({ email });
   if (user) {
-    await getPool().query(
-      `
-        UPDATE users
-        SET google_id = $2,
-            provider = 'google',
-            full_name = $3,
-            profile_picture = $4,
-            email_verified = TRUE,
-            last_login = NOW(),
-            updated_at = NOW()
-        WHERE id = $1
-      `,
-      [user.id, googleId, fullName, profilePicture]
-    );
-
-    return getUserById(user.id);
+    user.google_id = googleId;
+    user.provider = 'google';
+    user.full_name = fullName;
+    user.profile_picture = profilePicture;
+    user.email_verified = true;
+    user.last_login = new Date();
+    await user.save();
+    return toObject(user);
   }
 
-  ({ rows } = await getPool().query(
-    `
-      INSERT INTO users (email, full_name, google_id, provider, profile_picture, role, email_verified, last_login)
-      VALUES ($1, $2, $3, 'google', $4, 'customer', TRUE, NOW())
-      RETURNING *
-    `,
-    [email, fullName, googleId, profilePicture]
-  ));
+  const created = await User.create({
+    email,
+    full_name: fullName,
+    google_id: googleId,
+    provider: 'google',
+    profile_picture: profilePicture,
+    role: 'customer',
+    email_verified: true,
+    last_login: new Date()
+  });
 
-  return mapUser(rows[0]);
+  return toObject(created);
 }
 
 export async function getUserStats() {
-  const { rows } = await getPool().query(`
-    SELECT
-      COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE provider = 'google')::int AS google,
-      COUNT(*) FILTER (WHERE provider = 'local')::int AS local,
-      COUNT(*) FILTER (WHERE email_verified = TRUE)::int AS verified,
-      COUNT(*) FILTER (WHERE role = 'admin')::int AS admins
-    FROM users
-  `);
+  const [total, google, local, verified, admins] = await Promise.all([
+    User.countDocuments({}),
+    User.countDocuments({ provider: 'google' }),
+    User.countDocuments({ provider: 'local' }),
+    User.countDocuments({ email_verified: true }),
+    User.countDocuments({ role: 'admin' })
+  ]);
 
-  return rows[0];
+  return { total, google, local, verified, admins };
 }
 
 export async function createPasswordResetToken(userId, token, expiresInMinutes = 30) {
-  const database = getPool();
-  await database.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [userId]);
-  await database.query(
-    `
-      INSERT INTO password_reset_tokens (user_id, token, expires_at)
-      VALUES ($1, $2, NOW() + ($3 || ' minutes')::interval)
-    `,
-    [userId, token, String(expiresInMinutes)]
-  );
+  if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+    throw new Error('Invalid user id');
+  }
+
+  await PasswordResetToken.deleteMany({ user_id: userId });
+  await PasswordResetToken.create({
+    user_id: userId,
+    token,
+    expires_at: new Date(Date.now() + Number(expiresInMinutes || 30) * 60 * 1000)
+  });
 
   return token;
 }
 
 export async function createPhoneLoginToken(userId, phone, tokenHash, expiresInMinutes = 10) {
-  const database = getPool();
-  await database.query('DELETE FROM phone_login_tokens WHERE user_id = $1 OR phone = $2', [userId, phone]);
-  await database.query(
-    `
-      INSERT INTO phone_login_tokens (user_id, phone, token_hash, expires_at)
-      VALUES ($1, $2, $3, NOW() + ($4 || ' minutes')::interval)
-    `,
-    [userId, phone, tokenHash, String(expiresInMinutes)]
-  );
+  if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+    throw new Error('Invalid user id');
+  }
+
+  await PhoneLoginToken.deleteMany({
+    $or: [{ user_id: userId }, { phone }]
+  });
+
+  await PhoneLoginToken.create({
+    user_id: userId,
+    phone,
+    token_hash: tokenHash,
+    expires_at: new Date(Date.now() + Number(expiresInMinutes || 10) * 60 * 1000)
+  });
 }
 
 export async function consumePhoneLoginToken(phoneDigits, tokenHash) {
-  const cleanedDigits = String(phoneDigits || '').replace(/\D/g, '');
+  const cleanedDigits = normalizeDigits(phoneDigits);
   const localTen = cleanedDigits.length > 10 ? cleanedDigits.slice(-10) : cleanedDigits;
 
-  const { rows } = await getPool().query(
-    `
-      UPDATE phone_login_tokens plt
-      SET consumed_at = NOW()
-      WHERE plt.id = (
-        SELECT id
-        FROM phone_login_tokens
-        WHERE token_hash = $1
-          AND consumed_at IS NULL
-          AND expires_at > NOW()
-          AND regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') IN ($2, $3)
-        ORDER BY created_at DESC
-        LIMIT 1
-      )
-      RETURNING plt.user_id
-    `,
-    [tokenHash, cleanedDigits, localTen]
-  );
+  const candidate = await PhoneLoginToken.findOne({
+    token_hash: tokenHash,
+    consumed_at: null,
+    expires_at: { $gt: new Date() }
+  }).sort({ created_at: -1 });
 
-  return rows[0]?.user_id || null;
+  if (!candidate) {
+    return null;
+  }
+
+  const tokenDigits = normalizeDigits(candidate.phone);
+  const isPhoneMatch = tokenDigits === cleanedDigits || tokenDigits.endsWith(localTen);
+
+  if (!isPhoneMatch) {
+    return null;
+  }
+
+  candidate.consumed_at = new Date();
+  await candidate.save();
+
+  return String(candidate.user_id);
 }
 
 export async function verifyPasswordResetToken(token) {
-  const { rows } = await getPool().query(
-    `
-      SELECT prt.*, u.email, u.full_name
-      FROM password_reset_tokens prt
-      JOIN users u ON u.id = prt.user_id
-      WHERE prt.token = $1 AND prt.expires_at > NOW()
-    `,
-    [token]
-  );
+  const resetToken = await PasswordResetToken.findOne({
+    token,
+    expires_at: { $gt: new Date() }
+  }).lean();
 
-  return rows[0] || null;
+  if (!resetToken) {
+    return null;
+  }
+
+  const user = await User.findById(resetToken.user_id).lean();
+  if (!user) {
+    return null;
+  }
+
+  return {
+    ...toObject(resetToken),
+    email: user.email,
+    full_name: user.full_name
+  };
 }
 
 export async function deletePasswordResetToken(token) {
-  await getPool().query('DELETE FROM password_reset_tokens WHERE token = $1', [token]);
+  await PasswordResetToken.deleteOne({ token });
 }
 
 export async function updateUserPassword(userId, newPassword) {
+  if (!mongoose.Types.ObjectId.isValid(String(userId))) {
+    throw new Error('Invalid user id');
+  }
+
   const hashedPassword = await bcrypt.hash(newPassword, 10);
-  await getPool().query(
-    'UPDATE users SET password = $2, updated_at = NOW() WHERE id = $1',
-    [userId, hashedPassword]
-  );
+  await User.findByIdAndUpdate(userId, { $set: { password: hashedPassword } });
 }
 
-export default getPool;
+export default mongoose;
